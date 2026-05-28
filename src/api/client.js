@@ -1,6 +1,11 @@
 import axios from "axios";
 
-const baseURL = import.meta.env.VITE_API_BASE_URL || "/api";
+// תומך בשני שמות: VITE_APP_API_BASE_URL (זהה ל-mnm-admin) ו-VITE_API_BASE_URL.
+// אם אף אחד לא מוגדר → "/api" יחסי שעובר דרך Vite proxy (dev בלבד).
+const baseURL =
+  import.meta.env.VITE_APP_API_BASE_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  "/api";
 
 const client = axios.create({
   baseURL,
