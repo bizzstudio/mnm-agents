@@ -233,7 +233,7 @@ const ProductCatalog = () => {
           <FiUser size={36} className="mx-auto text-brand-light mb-3" />
           <h2 className="font-bold text-lg mb-2">בחר לקוח</h2>
           <p className="text-sm text-gray-500 mb-4">
-            המחירים מוצגים לפי המחירון של הלקוח. בחר לקוח לפני שתעבור לקטלוג.
+            בחר לקוח לפני שתעבור לקטלוג.
           </p>
           <Link to="/customers" className="btn-primary inline-flex">
             לבחירת לקוח

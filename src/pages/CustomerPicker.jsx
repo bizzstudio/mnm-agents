@@ -88,11 +88,6 @@ const CustomerPicker = () => {
                   <div className="flex items-center gap-2 text-xs text-gray-500 flex-wrap mt-1">
                     {c.phone && <span>{c.phone}</span>}
                     {c.email && <span>· {c.email}</span>}
-                    {c.priceList?.name && (
-                      <span className="bg-gray-100 px-2 py-0.5 rounded-full">
-                        מחירון: {c.priceList.name}
-                      </span>
-                    )}
                   </div>
                 </div>
                 {isActive && <FiCheck className="text-brand" size={22} />}

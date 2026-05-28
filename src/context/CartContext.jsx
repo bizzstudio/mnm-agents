@@ -1,16 +1,22 @@
-// Cart לפי לקוח. לכל לקוח שמורה טיוטה ב-sessionStorage כך שמעבר בין לקוחות
-// לא מאבד הזמנה בעבודה.
+// Cart לפי סוכן וגם לפי לקוח. לכל זוג (agentId, mainCustomerId) שמורה טיוטה
+// ב-sessionStorage כך שמעבר בין לקוחות לא מאבד עבודה, אבל סוכנים שנכנסים
+// לאותו דפדפן לא חולקים סל.
 //
 // המבנה: cart = {
-//   mainCustomerId, items: [{ productId, title, image, quantity, unitPrice, originalPrice, agentDiscountPercent }],
+//   mainCustomerId, items: [{ productId, title, image, quantity, unitPrice, allowedMin, allowedMax }],
 //   orderDiscountPercent, note
 // }
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { useAuth } from "./AuthContext";
 
 const CartContext = createContext(null);
 
-const storageKey = (mainCustomerId) => `agentCart:${mainCustomerId || "none"}`;
+const cartKey = (agentId, mainCustomerId) =>
+  `agentCart:${agentId || "anon"}:${mainCustomerId || "none"}`;
+
+const activeCustomerKey = (agentId) =>
+  `agentActiveCustomer:${agentId || "anon"}`;
 
 const emptyCart = (mainCustomerId) => ({
   mainCustomerId: mainCustomerId || null,
@@ -20,30 +26,45 @@ const emptyCart = (mainCustomerId) => ({
 });
 
 export const CartProvider = ({ children }) => {
-  const [activeMainCustomerId, setActiveMainCustomerId] = useState(() =>
-    sessionStorage.getItem("agentActiveCustomer") || null
-  );
+  const { agent } = useAuth();
+  const agentId = agent?._id || null;
 
-  const [cart, setCart] = useState(() => {
-    const raw = sessionStorage.getItem(storageKey(activeMainCustomerId));
-    return raw ? JSON.parse(raw) : emptyCart(activeMainCustomerId);
-  });
+  const [activeMainCustomerId, setActiveMainCustomerId] = useState(null);
+  const [cart, setCart] = useState(() => emptyCart(null));
 
+  // כאשר הסוכן משתנה (login / logout / החלפת סוכן) — טוענים מחדש את ה-state
+  // מה-storage המתאים לאותו agentId, כך שלעולם לא נציג סל של סוכן אחר.
   useEffect(() => {
+    const storedCustomer =
+      sessionStorage.getItem(activeCustomerKey(agentId)) || null;
+    setActiveMainCustomerId(storedCustomer);
+
+    const cartRaw = sessionStorage.getItem(cartKey(agentId, storedCustomer));
+    setCart(cartRaw ? JSON.parse(cartRaw) : emptyCart(storedCustomer));
+  }, [agentId]);
+
+  // שמירת הלקוח הפעיל לפי סוכן
+  useEffect(() => {
+    if (agentId == null) return; // לא לדרוס "anon" כשעוד אין סוכן
     if (activeMainCustomerId) {
-      sessionStorage.setItem("agentActiveCustomer", activeMainCustomerId);
+      sessionStorage.setItem(activeCustomerKey(agentId), activeMainCustomerId);
     } else {
-      sessionStorage.removeItem("agentActiveCustomer");
+      sessionStorage.removeItem(activeCustomerKey(agentId));
     }
-  }, [activeMainCustomerId]);
+  }, [agentId, activeMainCustomerId]);
 
+  // שמירת הסל לפי זוג (agentId, customerId)
   useEffect(() => {
-    sessionStorage.setItem(storageKey(activeMainCustomerId), JSON.stringify(cart));
-  }, [cart, activeMainCustomerId]);
+    if (agentId == null) return;
+    sessionStorage.setItem(
+      cartKey(agentId, activeMainCustomerId),
+      JSON.stringify(cart)
+    );
+  }, [cart, activeMainCustomerId, agentId]);
 
   const switchCustomer = (mainCustomerId) => {
     setActiveMainCustomerId(mainCustomerId);
-    const raw = sessionStorage.getItem(storageKey(mainCustomerId));
+    const raw = sessionStorage.getItem(cartKey(agentId, mainCustomerId));
     setCart(raw ? JSON.parse(raw) : emptyCart(mainCustomerId));
   };
 
