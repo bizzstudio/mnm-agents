@@ -17,7 +17,10 @@ import {
     submitContractByToken,
 } from "@/api/contracts";
 import SignaturePad from "@/components/contract/SignaturePad";
-import ContractBody from "@/components/contract/ContractBody";
+import ContractBody, {
+    GuaranteeAppendixBody,
+    PromissoryNoteAppendixBody,
+} from "@/components/contract/ContractBody";
 
 const Field = ({ label, value, onChange, className = "" }) => (
     <label className={`block ${className}`}>
@@ -41,6 +44,7 @@ const SignContract = () => {
     const [successInfo, setSuccessInfo] = useState(null);
 
     const [formData, setFormData] = useState({
+        // נספח א'
         customerName: "",
         customerType: "",
         companyNumber: "",
@@ -54,6 +58,22 @@ const SignContract = () => {
         paymentMethodDetails: "",
         customerFullName: "",
         agentFullName: "",
+        // נספח ב' — הלקוח עצמו הוא הערב; אוכלסים מראש מפרטי הלקוח
+        guarantorName: "",
+        guarantorId: "",
+        guarantorAddress: "",
+        // נספח ג' — שטר חוב
+        promissoryDate: "",
+        promissoryPlace: "",
+        promissoryAmount: "",
+        promissoryAmountWords: "",
+        promissoryReason: "",
+        avalist1Name: "",
+        avalist1Id: "",
+        avalist1Address: "",
+        avalist2Name: "",
+        avalist2Id: "",
+        avalist2Address: "",
     });
     const [signatureDataUrl, setSignatureDataUrl] = useState("");
     const [agreed, setAgreed] = useState(false);
@@ -114,6 +134,7 @@ const SignContract = () => {
                 role === "customer"
                     ? {
                           signedData: {
+                              // נספח א'
                               customerName: formData.customerName.trim(),
                               customerType: formData.customerType,
                               companyNumber: formData.companyNumber,
@@ -126,6 +147,22 @@ const SignContract = () => {
                               paymentMethod: formData.paymentMethod,
                               paymentMethodDetails: formData.paymentMethodDetails,
                               customerFullName: formData.customerFullName.trim(),
+                              // נספח ב'
+                              guarantorName: formData.guarantorName.trim(),
+                              guarantorId: formData.guarantorId.trim(),
+                              guarantorAddress: formData.guarantorAddress.trim(),
+                              // נספח ג'
+                              promissoryDate: formData.promissoryDate,
+                              promissoryPlace: formData.promissoryPlace,
+                              promissoryAmount: formData.promissoryAmount,
+                              promissoryAmountWords: formData.promissoryAmountWords,
+                              promissoryReason: formData.promissoryReason,
+                              avalist1Name: formData.avalist1Name.trim(),
+                              avalist1Id: formData.avalist1Id.trim(),
+                              avalist1Address: formData.avalist1Address.trim(),
+                              avalist2Name: formData.avalist2Name.trim(),
+                              avalist2Id: formData.avalist2Id.trim(),
+                              avalist2Address: formData.avalist2Address.trim(),
                           },
                           signatureDataUrl,
                       }
@@ -401,10 +438,116 @@ const SignContract = () => {
                         </section>
                     )}
 
+                    {/* נספח ב' — כתב ערבות אישית */}
+                    {isCustomerForm && (
+                        <section className="bg-white rounded-lg shadow p-6">
+                            <h2 className="font-bold text-lg mb-3 text-gray-800">
+                                נספח ב' — כתב ערבות אישית
+                            </h2>
+                            <GuaranteeAppendixBody
+                                guarantorName={formData.guarantorName}
+                                customerName={formData.customerName}
+                                companyNumber={formData.companyNumber}
+                            />
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 border-t pt-4">
+                                <Field
+                                    label="שם הערב *"
+                                    value={formData.guarantorName}
+                                    onChange={setField("guarantorName")}
+                                />
+                                <Field
+                                    label="ת.ז. הערב *"
+                                    value={formData.guarantorId}
+                                    onChange={setField("guarantorId")}
+                                />
+                                <Field
+                                    label="כתובת הערב *"
+                                    value={formData.guarantorAddress}
+                                    onChange={setField("guarantorAddress")}
+                                />
+                            </div>
+                        </section>
+                    )}
+
+                    {/* נספח ג' — שטר חוב */}
+                    {isCustomerForm && (
+                        <section className="bg-white rounded-lg shadow p-6">
+                            <h2 className="font-bold text-lg mb-3 text-gray-800">
+                                נספח ג' — שטר חוב
+                            </h2>
+                            <PromissoryNoteAppendixBody
+                                customerName={formData.customerName}
+                                companyNumber={formData.companyNumber}
+                            />
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 border-t pt-4">
+                                <Field
+                                    label="תאריך השטר"
+                                    value={formData.promissoryDate}
+                                    onChange={setField("promissoryDate")}
+                                />
+                                <Field
+                                    label="מקום חתימת השטר"
+                                    value={formData.promissoryPlace}
+                                    onChange={setField("promissoryPlace")}
+                                />
+                                <Field
+                                    label="סכום השטר (₪) — אופציונלי"
+                                    value={formData.promissoryAmount}
+                                    onChange={setField("promissoryAmount")}
+                                />
+                                <Field
+                                    label="סכום במילים — אופציונלי"
+                                    value={formData.promissoryAmountWords}
+                                    onChange={setField("promissoryAmountWords")}
+                                />
+                                <Field
+                                    label="בגין (תיאור) — אופציונלי"
+                                    value={formData.promissoryReason}
+                                    onChange={setField("promissoryReason")}
+                                    className="sm:col-span-2"
+                                />
+                            </div>
+
+                            <h3 className="font-semibold mt-6 mb-2 text-gray-800">
+                                ערבי אוואל (חתימה תיעשה ידנית בנפרד)
+                            </h3>
+                            <div className="space-y-4">
+                                {[1, 2].map((n) => (
+                                    <div
+                                        key={n}
+                                        className="grid grid-cols-1 sm:grid-cols-3 gap-3 border border-gray-200 rounded p-3"
+                                    >
+                                        <Field
+                                            label={`שם ערב ${n}`}
+                                            value={formData[`avalist${n}Name`]}
+                                            onChange={setField(`avalist${n}Name`)}
+                                        />
+                                        <Field
+                                            label={`ת.ז. ערב ${n}`}
+                                            value={formData[`avalist${n}Id`]}
+                                            onChange={setField(`avalist${n}Id`)}
+                                        />
+                                        <Field
+                                            label={`כתובת ערב ${n}`}
+                                            value={formData[`avalist${n}Address`]}
+                                            onChange={setField(`avalist${n}Address`)}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    )}
+
                     <section className="bg-white rounded-lg shadow p-6">
                         <h2 className="font-bold text-lg mb-3 text-gray-800">
                             {isAgentForm ? "חתימת סוכן שטח" : "חתימה דיגיטלית"}
                         </h2>
+                        {isCustomerForm && (
+                            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded p-3 mb-3">
+                                <strong>שים לב:</strong> חתימה זו תקפה לכל ההסכם — המסמך הראשי,
+                                נספח א' (פרטי הלקוח), נספח ב' (ערבות אישית), ונספח ג' (שטר חוב).
+                            </p>
+                        )}
 
                         <Field
                             label={

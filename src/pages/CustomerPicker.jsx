@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FiSearch, FiUser, FiPlus, FiCheck, FiFileText, FiEdit2, FiTrash2 } from "react-icons/fi";
 import { listCustomers, deleteCustomer } from "@/api/customers";
-import { sendContract } from "@/api/contracts";
+import { sendContract, openContractInPerson } from "@/api/contracts";
 import { useCart } from "@/context/CartContext";
 import Loader from "@/components/common/Loader";
 import Empty from "@/components/common/Empty";
@@ -19,6 +19,7 @@ const CustomerPicker = () => {
   const [sendingFor, setSendingFor] = useState(null); // customer id
   const [deletingFor, setDeletingFor] = useState(null); // customer id
   const [editingId, setEditingId] = useState(null); // customer id being edited
+  const [contractMenuFor, setContractMenuFor] = useState(null); // customer id whose contract menu is open
   const [feedback, setFeedback] = useState(null); // {id, type, message}
 
   const fetchCustomers = useCallback(async (q) => {
@@ -42,8 +43,9 @@ const CustomerPicker = () => {
     navigate("/catalog");
   };
 
-  const handleSendContract = async (e, mainCustomerId) => {
+  const handleSendByEmail = async (e, mainCustomerId) => {
     e.stopPropagation();
+    setContractMenuFor(null);
     setSendingFor(mainCustomerId);
     setFeedback(null);
     try {
@@ -59,6 +61,42 @@ const CustomerPicker = () => {
     } finally {
       setSendingFor(null);
     }
+  };
+
+  // "מלא עכשיו במקום" — יוצר הסכם בלי לשלוח מייל ופותח את דף החתימה במכשיר
+  // הסוכן. הלקוח חותם בטלפון של הסוכן. אם יש כבר הסכם פתוח — משתמש בו.
+  const handleFillNow = async (e, mainCustomerId) => {
+    e.stopPropagation();
+    setContractMenuFor(null);
+    setSendingFor(mainCustomerId);
+    setFeedback(null);
+    try {
+      const r = await openContractInPerson(mainCustomerId, false);
+      if (!r.customerToken) {
+        // אם אין token — סימן שההסכם כבר ב-AwaitingAgent / Signed, לא ניתן למלא שוב כלקוח.
+        setFeedback({
+          id: mainCustomerId,
+          type: "error",
+          message: `לא ניתן לפתוח עכשיו — סטטוס: ${r.status}`,
+        });
+        return;
+      }
+      window.open(
+        `${window.location.origin}/sign-contract/${encodeURIComponent(r.customerToken)}`,
+        "_blank",
+        "noopener,noreferrer"
+      );
+    } catch (err) {
+      const msg = err?.response?.data?.message || "שגיאה בפתיחת ההסכם";
+      setFeedback({ id: mainCustomerId, type: "error", message: msg });
+    } finally {
+      setSendingFor(null);
+    }
+  };
+
+  const toggleContractMenu = (e, mainCustomerId) => {
+    e.stopPropagation();
+    setContractMenuFor((cur) => (cur === mainCustomerId ? null : mainCustomerId));
   };
 
   const handleEdit = (e, mainCustomerId) => {
@@ -166,16 +204,43 @@ const CustomerPicker = () => {
                     {isActive && <FiCheck className="text-brand" size={22} />}
                   </button>
                   <div className="shrink-0 flex items-center gap-1.5 flex-wrap justify-end">
-                    <button
-                      type="button"
-                      onClick={(e) => handleSendContract(e, c._id)}
-                      disabled={sendingFor === c._id}
-                      className="inline-flex items-center gap-1 text-xs px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 text-gray-700 disabled:opacity-50"
-                      title="שליחת הסכם דיגיטלי ללקוח"
-                    >
-                      <FiFileText />
-                      {sendingFor === c._id ? "שולח..." : "שלח הסכם"}
-                    </button>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={(e) => toggleContractMenu(e, c._id)}
+                        disabled={sendingFor === c._id}
+                        className="inline-flex items-center gap-1 text-xs px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 text-gray-700 disabled:opacity-50"
+                        title="פתיחת הסכם דיגיטלי"
+                      >
+                        <FiFileText />
+                        {sendingFor === c._id ? "טוען..." : "הסכם"}
+                      </button>
+                      {contractMenuFor === c._id && (
+                        <>
+                          {/* רקע ללחיצה-מחוץ-לתפריט */}
+                          <div
+                            className="fixed inset-0 z-10"
+                            onClick={() => setContractMenuFor(null)}
+                          />
+                          <div className="absolute z-20 end-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden text-sm">
+                            <button
+                              type="button"
+                              onClick={(e) => handleSendByEmail(e, c._id)}
+                              className="block w-full text-start px-4 py-2.5 hover:bg-gray-50 text-gray-800"
+                            >
+                              📧 שלח למייל הלקוח
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => handleFillNow(e, c._id)}
+                              className="block w-full text-start px-4 py-2.5 hover:bg-gray-50 text-gray-800 border-t border-gray-100"
+                            >
+                              ✍️ מלא עכשיו במקום
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={(e) => handleEdit(e, c._id)}

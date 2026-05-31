@@ -11,6 +11,17 @@ export const sendContract = async (mainCustomerId, force = false) => {
     return data;
 };
 
+// "מלא עכשיו במקום" — יוצר הסכם בלי לשלוח מייל ומחזיר customerToken.
+// הסוכן פותח עם הטוקן את דף החתימה במכשירו, והלקוח חותם בו במקום.
+export const openContractInPerson = async (mainCustomerId, force = false) => {
+    const { data } = await client.post("/agent/contracts/send", {
+        mainCustomerId,
+        force,
+        skipEmail: true,
+    });
+    return data; // { contractId, status, created, customerToken }
+};
+
 // בלי mainCustomerId — מחזיר רק AwaitingAgent (לדשבורד).
 export const listPendingForAgent = async () => {
     const { data } = await client.get("/agent/contracts");
