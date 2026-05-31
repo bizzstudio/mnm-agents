@@ -33,6 +33,13 @@ const ProductCard = ({ product }) => {
   // המחיר שמוצג בבקר: אם בסל - של הסל, אחרת ה-local state.
   const effectivePrice = inCart ? inCart.unitPrice : selectedPrice;
 
+  // טיוטת הקלדה: מחרוזת כשהשדה במצב עריכה, null אחרת. מאפשרת להקליד ערך
+  // ביניים שיוצא זמנית מהטווח (למשל "6" בדרך ל-"6.93" כשהמינימום הוא 6.6)
+  // בלי לקפוץ. אכיפת הטווח קורית ב-blur.
+  const [draftPrice, setDraftPrice] = useState(null);
+  const isEditingPrice = draftPrice !== null;
+  const displayValue = isEditingPrice ? draftPrice : effectivePrice ?? "";
+
   const clamp = (v) => Math.max(minP, Math.min(maxP, round2(v)));
 
   // עדכון מחיר: בסל → updateLinePrice של הקונטקסט; לפני הוספה → state מקומי
@@ -62,9 +69,31 @@ const ProductCard = ({ product }) => {
   };
 
   const handleInput = (e) => {
-    const v = parseFloat(e.target.value);
-    if (Number.isFinite(v)) setPrice(clamp(v));
-    else if (!inCart) setSelectedPrice(null);
+    const raw = e.target.value;
+    setDraftPrice(raw);
+    // עדכון לייב של המחיר רק כשהערך תקין ובתוך הטווח, כדי שטוטאל הסל יתעדכן
+    // תוך כדי הקלדה. ערכים מחוץ לטווח לא נשמרים אלא יוצנמו ב-blur.
+    const v = parseFloat(raw);
+    if (Number.isFinite(v) && v >= minP && v <= maxP) {
+      setPrice(round2(v));
+    }
+  };
+
+  const handlePriceFocus = (e) => {
+    setDraftPrice(effectivePrice != null ? String(effectivePrice) : "");
+    e.currentTarget.select();
+  };
+
+  const handlePriceBlur = () => {
+    const v = parseFloat(draftPrice);
+    if (Number.isFinite(v)) {
+      setPrice(clamp(v));
+    }
+    setDraftPrice(null);
+  };
+
+  const handlePriceKeyDown = (e) => {
+    if (e.key === "Enter") e.currentTarget.blur();
   };
 
   const handleAdd = () => {
@@ -126,12 +155,14 @@ const ProductCard = ({ product }) => {
             type="number"
             inputMode="decimal"
             step={PRICE_STEP}
-            value={effectivePrice ?? ""}
+            value={displayValue}
             placeholder="בחר מחיר"
             min={minP}
             max={maxP}
             onChange={handleInput}
-            onClick={(e) => e.currentTarget.select()}
+            onFocus={handlePriceFocus}
+            onBlur={handlePriceBlur}
+            onKeyDown={handlePriceKeyDown}
             className="w-full h-full text-center font-bold text-sm bg-transparent outline-none text-brand-dark placeholder:text-gray-400 placeholder:text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
           <button
