@@ -1,16 +1,17 @@
 import { NavLink } from "react-router-dom";
-import { FiHome, FiUsers, FiGrid, FiList } from "react-icons/fi";
+import { FiHome, FiUsers, FiGrid, FiList, FiEdit3 } from "react-icons/fi";
 
 const items = [
   { to: "/dashboard", label: "דשבורד", icon: FiHome },
   { to: "/customers", label: "לקוחות", icon: FiUsers },
   { to: "/catalog", label: "קטלוג", icon: FiGrid },
-  { to: "/orders", label: "ההזמנות שלי", icon: FiList },
+  { to: "/orders", label: "הזמנות", icon: FiList },
+  { to: "/contracts/pending", label: "הסכמים", icon: FiEdit3 },
 ];
 
 const BottomNav = () => (
   <nav className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 shadow-lg safe-bottom z-30">
-    <div className="grid grid-cols-4 gap-1 max-w-3xl mx-auto">
+    <div className="grid grid-cols-5 gap-1 max-w-3xl mx-auto">
       {items.map(({ to, label, icon: Icon }) => (
         <NavLink
           key={to}

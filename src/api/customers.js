@@ -16,3 +16,13 @@ export const createCustomer = async (payload) => {
   const { data } = await client.post("/agent/customers", payload);
   return data;
 };
+
+export const updateCustomer = async (id, payload) => {
+  const { data } = await client.put(`/agent/customers/${id}`, payload);
+  return data;
+};
+
+export const deleteCustomer = async (id) => {
+  const { data } = await client.delete(`/agent/customers/${id}`);
+  return data;
+};

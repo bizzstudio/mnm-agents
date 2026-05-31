@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { FiArrowRight } from "react-icons/fi";
 import { createCustomer } from "@/api/customers";
+import { sendContract } from "@/api/contracts";
 import { useCart } from "@/context/CartContext";
 
 const NewCustomer = () => {
@@ -17,12 +18,15 @@ const NewCustomer = () => {
     contactFirstName: "",
     contactLastName: "",
   });
+  const [sendContractOnCreate, setSendContractOnCreate] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [contractNotice, setContractNotice] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setContractNotice("");
     if (!form.name || !form.email) {
       setError("שם ואימייל חובה");
       return;
@@ -31,6 +35,18 @@ const NewCustomer = () => {
     try {
       const created = await createCustomer(form);
       switchCustomer(created._id);
+
+      // שליחת הסכם — הכשלה כאן לא הופכת את היצירה ללא תקפה.
+      if (sendContractOnCreate) {
+        try {
+          const r = await sendContract(created._id, false);
+          setContractNotice(`הסכם נשלח ללקוח (${r.sentToEmail})`);
+        } catch (contractErr) {
+          const msg = contractErr?.response?.data?.message || "";
+          setContractNotice(`לקוח נוצר, אך שליחת ההסכם נכשלה: ${msg}`);
+        }
+      }
+
       navigate("/catalog");
     } catch (err) {
       const msg = err?.response?.data?.message;
@@ -111,9 +127,27 @@ const NewCustomer = () => {
           </label>
         </div>
 
+        <label className="flex items-start gap-2 text-sm cursor-pointer pt-2 border-t border-gray-100">
+          <input
+            type="checkbox"
+            checked={sendContractOnCreate}
+            onChange={(e) => setSendContractOnCreate(e.target.checked)}
+            className="mt-1"
+          />
+          <span className="text-gray-700">
+            שלח ללקוח הסכם דיגיטלי לחתימה (יישלח אליו מייל עם לינק לחתימה).
+          </span>
+        </label>
+
         {error && (
           <div className="rounded-xl bg-danger/10 text-danger-dark px-4 py-3 text-sm font-medium">
             {error}
+          </div>
+        )}
+
+        {contractNotice && (
+          <div className="rounded-xl bg-blue-50 text-blue-800 px-4 py-3 text-sm">
+            {contractNotice}
           </div>
         )}
 

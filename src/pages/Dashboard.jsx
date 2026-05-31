@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { FiTrendingUp, FiShoppingBag, FiFileText, FiTarget } from "react-icons/fi";
+import { FiTrendingUp, FiShoppingBag, FiFileText, FiTarget, FiEdit3 } from "react-icons/fi";
 import { getDashboard } from "@/api/dashboard";
+import { listPendingForAgent } from "@/api/contracts";
 import Loader from "@/components/common/Loader";
 import { useAuth } from "@/context/AuthContext";
 
@@ -59,6 +60,7 @@ const Dashboard = () => {
   const [range, setRange] = useState("month");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [pendingContracts, setPendingContracts] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -77,6 +79,21 @@ const Dashboard = () => {
       cancelled = true;
     };
   }, [range]);
+
+  // ספירת הסכמים ממתינים — נטענת פעם אחת, לא תלויה ב-range.
+  useEffect(() => {
+    let cancelled = false;
+    listPendingForAgent()
+      .then((arr) => {
+        if (!cancelled) setPendingContracts(Array.isArray(arr) ? arr.length : 0);
+      })
+      .catch(() => {
+        if (!cancelled) setPendingContracts(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (loading) return <Loader label="טוען דשבורד..." />;
   if (!data) return <div className="p-6 text-center text-gray-500">לא נטענו נתונים</div>;
@@ -130,6 +147,27 @@ const Dashboard = () => {
           accent="bg-purple-500"
         />
       </div>
+
+      {pendingContracts > 0 && (
+        <Link
+          to="/contracts/pending"
+          className="block mb-6 card p-4 bg-amber-50 border-amber-300 hover:border-amber-500 transition"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-amber-500 text-white flex items-center justify-center">
+              <FiEdit3 size={22} />
+            </div>
+            <div className="flex-1">
+              <div className="font-bold text-amber-900">
+                {pendingContracts} {pendingContracts === 1 ? "הסכם ממתין" : "הסכמים ממתינים"} לחתימתך
+              </div>
+              <div className="text-xs text-amber-700 mt-0.5">
+                הלקוח חתם — נדרשת החתימה שלך כדי להשלים את התהליך
+              </div>
+            </div>
+          </div>
+        </Link>
+      )}
 
       <h2 className="text-lg font-bold text-gray-700 mb-2">יעדי מכירות</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">

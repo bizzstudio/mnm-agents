@@ -14,12 +14,17 @@ import CartReview from "@/pages/CartReview";
 import MyOrders from "@/pages/MyOrders";
 import OrderDetail from "@/pages/OrderDetail";
 import Confirmation from "@/pages/Confirmation";
+import PendingContracts from "@/pages/PendingContracts";
+import SignContract from "@/pages/SignContract";
 
 const App = () => (
   <AuthProvider>
     <CartProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
+
+        {/* דף חתימה — public, אימות דרך הטוקן ב-URL. חייב להיות מחוץ ל-PrivateRoute. */}
+        <Route path="/sign-contract/:token" element={<SignContract />} />
 
         <Route
           element={
@@ -37,6 +42,7 @@ const App = () => (
           <Route path="/confirmation/:id" element={<Confirmation />} />
           <Route path="/orders" element={<MyOrders />} />
           <Route path="/orders/:id" element={<OrderDetail />} />
+          <Route path="/contracts/pending" element={<PendingContracts />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
