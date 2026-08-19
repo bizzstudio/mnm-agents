@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { FiTrendingUp, FiShoppingBag, FiFileText, FiTarget, FiEdit3 } from "react-icons/fi";
+import { FiTrendingUp, FiFileText, FiBarChart2, FiEdit3 } from "react-icons/fi";
 import { getDashboard } from "@/api/dashboard";
 import { listPendingForAgent } from "@/api/contracts";
 import Loader from "@/components/common/Loader";
@@ -121,30 +121,24 @@ const Dashboard = () => {
         </select>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
         <KpiCard
-          icon={FiShoppingBag}
-          label="הזמנות"
+          icon={FiFileText}
+          label="הצעות מחיר"
           value={k.ordersCount || 0}
-          accent="bg-brand"
+          accent="bg-orange-400"
         />
         <KpiCard
           icon={FiTrendingUp}
-          label="סך מכירות"
+          label="סך הצעות מחיר"
           value={`₪${(k.ordersTotal || 0).toLocaleString()}`}
           accent="bg-success"
         />
         <KpiCard
-          icon={FiFileText}
-          label="הצעות מחיר"
-          value={k.quotesCount || 0}
-          accent="bg-orange-400"
-        />
-        <KpiCard
-          icon={FiTarget}
-          label="יחס המרה"
-          value={`${Math.round((k.conversionRate || 0) * 100)}%`}
-          accent="bg-purple-500"
+          icon={FiBarChart2}
+          label="ממוצע להצעה"
+          value={`₪${Math.round(k.ordersAvg || 0).toLocaleString()}`}
+          accent="bg-brand"
         />
       </div>
 
@@ -180,7 +174,7 @@ const Dashboard = () => {
       <div className="card divide-y divide-gray-100">
         {(data.topCustomers || []).length === 0 ? (
           <div className="p-6 text-center text-sm text-gray-500">
-            אין נתונים עדיין — צרו הזמנה ראשונה
+            אין נתונים עדיין — צרו הצעת מחיר ראשונה
           </div>
         ) : (
           (data.topCustomers || []).map((c) => (
@@ -193,7 +187,7 @@ const Dashboard = () => {
                 <span className="text-brand-dark font-bold">
                   ₪{(c.totalSum || 0).toLocaleString()}
                 </span>
-                <span className="text-xs text-gray-500">{c.count} הזמנות</span>
+                <span className="text-xs text-gray-500">{c.count} הצעות</span>
               </div>
             </div>
           ))
@@ -202,7 +196,7 @@ const Dashboard = () => {
 
       <div className="mt-6 flex gap-3 flex-wrap">
         <Link to="/customers" className="btn-primary flex-1 min-w-[150px]">
-          התחל מכירה חדשה
+          הצעת מחיר חדשה
         </Link>
         <Link to="/orders" className="btn-secondary flex-1 min-w-[150px]">
           הצג היסטוריה

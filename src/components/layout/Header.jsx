@@ -26,16 +26,16 @@ const Header = () => {
           </span>
         </Link>
 
-        {/* כפתור הזמנה חדשה — קיצור דרך מהיר במובייל בלבד, ממורכז.
+        {/* כפתור הצעת מחיר חדשה — קיצור דרך מהיר במובייל בלבד, ממורכז.
             mx-auto בתוך flex container מושך אותו למרכז.
             בדסקטופ/טאבלט יש את הכפתור הגדול בדשבורד. */}
         <Link
           to="/customers"
-          aria-label="התחל הזמנה חדשה"
+          aria-label="התחל הצעת מחיר חדשה"
           className="sm:hidden mx-auto flex items-center gap-1 px-3 py-2 rounded-xl bg-brand text-white text-xs font-semibold shrink-0"
         >
           <FiPlus size={16} />
-          <span className="whitespace-nowrap">הזמנה חדשה</span>
+          <span className="whitespace-nowrap">הצעה חדשה</span>
         </Link>
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">

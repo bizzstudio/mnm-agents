@@ -5,7 +5,7 @@ const items = [
   { to: "/dashboard", label: "דשבורד", icon: FiHome },
   { to: "/customers", label: "לקוחות", icon: FiUsers },
   { to: "/catalog", label: "קטלוג", icon: FiGrid },
-  { to: "/orders", label: "הזמנות", icon: FiList },
+  { to: "/orders", label: "הצעות מחיר", icon: FiList },
   { to: "/contracts/pending", label: "הסכמים", icon: FiEdit3 },
 ];
 

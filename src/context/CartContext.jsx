@@ -73,6 +73,9 @@ export const CartProvider = ({ children }) => {
   // quantity: ברירת מחדל 1; אם המוצר כבר בסל - מוסיף לכמות הקיימת
   const addItem = (product, options = {}) => {
     const { price, quantity = 1 } = options;
+    // מוצר בלי מחיר תקף (pricing.unavailable) — השרת פוסל אותו בכל מקרה
+    // ב-agentPriceGuard, ובלי החסימה הזו הוא היה נכנס לסל ב-₪0.
+    if (product?.pricing?.unavailable) return;
     setCart((c) => {
       const id = product._id || product.productId;
       const existing = c.items.find((i) => i.productId === String(id));

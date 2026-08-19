@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { FiTrash2, FiArrowRight, FiCheck, FiFileText, FiMinus, FiPlus } from "react-icons/fi";
+import { FiTrash2, FiArrowRight, FiFileText, FiMinus, FiPlus } from "react-icons/fi";
 import { useCart } from "@/context/CartContext";
 import { createOrder } from "@/api/orders";
 import QuantityInput from "@/components/common/QuantityInput";
@@ -29,7 +29,7 @@ const CartReview = () => {
   if (!activeMainCustomerId) {
     return (
       <div className="p-6 max-w-md mx-auto">
-        <Empty title="לא נבחר לקוח" description="עבור לבחירת לקוח לפני יצירת הזמנה" />
+        <Empty title="לא נבחר לקוח" description="עבור לבחירת לקוח לפני יצירת הצעת מחיר" />
         <Link to="/customers" className="btn-primary mt-4 inline-flex">
           לבחירת לקוח
         </Link>
@@ -37,7 +37,7 @@ const CartReview = () => {
     );
   }
 
-  const handleSubmit = async (orderType) => {
+  const handleSubmit = async () => {
     setError("");
     if (cart.items.length === 0) {
       setError("הסל ריק");
@@ -52,7 +52,7 @@ const CartReview = () => {
           quantity: i.quantity,
           price: i.unitPrice,
         })),
-        orderType,
+        orderType: "quote",
         note: cart.note || undefined,
       };
       const res = await createOrder(payload);
@@ -84,7 +84,7 @@ const CartReview = () => {
         <Link to="/catalog" className="p-2 text-gray-600 hover:bg-gray-100 rounded-xl">
           <FiArrowRight />
         </Link>
-        <h1 className="text-xl font-bold text-gray-800">סיכום סל</h1>
+        <h1 className="text-xl font-bold text-gray-800">סיכום הצעת מחיר</h1>
       </div>
 
       {cart.items.length === 0 ? (
@@ -191,7 +191,7 @@ const CartReview = () => {
 
           <div className="card p-4">
             <label className="block">
-              <span className="font-semibold text-gray-700">הערה ללקוח / להזמנה</span>
+              <span className="font-semibold text-gray-700">הערה ללקוח / להצעת המחיר</span>
               <textarea
                 value={cart.note || ""}
                 onChange={(e) => setNote(e.target.value)}
@@ -215,20 +215,13 @@ const CartReview = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+          <div className="pt-2">
             <button
-              onClick={() => handleSubmit("quote")}
+              onClick={handleSubmit}
               disabled={submitting}
-              className="btn-secondary"
+              className="btn-primary w-full"
             >
-              <FiFileText /> שמור כהצעת מחיר
-            </button>
-            <button
-              onClick={() => handleSubmit("order")}
-              disabled={submitting}
-              className="btn-primary"
-            >
-              <FiCheck /> אישור הזמנה
+              <FiFileText /> {submitting ? "שומר..." : "שמור כהצעת מחיר"}
             </button>
           </div>
         </div>

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { FiArrowRight, FiRefreshCw } from "react-icons/fi";
+import { FiArrowRight } from "react-icons/fi";
 import dayjs from "dayjs";
-import { getOrder, convertQuoteToOrder } from "@/api/orders";
+import { getOrder } from "@/api/orders";
 import Loader from "@/components/common/Loader";
 import { DEFAULT_PRODUCT_IMAGE, getPrimaryProductImageUrl } from "@/utils/productImage";
 
@@ -11,7 +11,6 @@ const OrderDetail = () => {
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [converting, setConverting] = useState(false);
 
   const fetchOrder = () =>
     getOrder(id)
@@ -25,29 +24,14 @@ const OrderDetail = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const handleConvert = async () => {
-    if (!window.confirm("להמיר הצעת מחיר זו להזמנה?")) return;
-    setConverting(true);
-    try {
-      await convertQuoteToOrder(id);
-      await fetchOrder();
-    } catch (err) {
-      alert(err?.response?.data?.message || "שגיאה בהמרה");
-    } finally {
-      setConverting(false);
-    }
-  };
-
   if (loading) return <Loader />;
   if (!order)
     return (
       <div className="p-6 text-center">
-        <p>ההזמנה לא נמצאה</p>
+        <p>הצעת המחיר לא נמצאה</p>
         <Link to="/orders" className="btn-secondary mt-4 inline-flex">חזרה</Link>
       </div>
     );
-
-  const isQuote = order.orderType === "quote";
 
   return (
     <div className="px-4 sm:px-6 py-4 max-w-3xl mx-auto pb-10">
@@ -59,7 +43,7 @@ const OrderDetail = () => {
           <FiArrowRight />
         </button>
         <h1 className="text-xl font-bold text-gray-800">
-          {isQuote ? "הצעת מחיר" : "הזמנה"} #{order.invoice || order._id.slice(-6)}
+          הצעת מחיר #{order.invoice || order._id.slice(-6)}
         </h1>
       </div>
 
@@ -141,17 +125,6 @@ const OrderDetail = () => {
           <span className="text-brand-dark">₪{order.total.toLocaleString()}</span>
         </div>
       </div>
-
-      {isQuote && (
-        <button
-          onClick={handleConvert}
-          disabled={converting}
-          className="btn-primary w-full"
-        >
-          <FiRefreshCw />
-          {converting ? "ממיר..." : "המר להזמנה"}
-        </button>
-      )}
     </div>
   );
 };

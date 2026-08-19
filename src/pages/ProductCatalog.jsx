@@ -21,13 +21,16 @@ const ProductCard = ({ product }) => {
 
   const pricing = product.pricing || {};
   const hasRange = !!pricing.hasRange;
+  // מוצר שאין לו מחיר כלל (לא מחיר קנייה ולא מחירון) — השרת פוסל הזמנה שלו,
+  // ולכן אסור להציג אותו כ-₪0 עם כפתור הוספה פעיל.
+  const unavailable = !!pricing.unavailable;
   const minP = Number(pricing.min || 0);
   const maxP = Number(pricing.max || 0);
 
   // selectedPrice משמש רק לפני הוספה לסל. אחרי שהמוצר בסל, מקור האמת הוא
   // cart.items[i].unitPrice, ושינויים בבקר מעדכנים אותו דרך updateLinePrice.
   const [selectedPrice, setSelectedPrice] = useState(
-    hasRange ? null : pricing.default ?? minP
+    hasRange || unavailable ? null : pricing.default ?? minP
   );
 
   // המחיר שמוצג בבקר: אם בסל - של הסל, אחרת ה-local state.
@@ -97,7 +100,8 @@ const ProductCard = ({ product }) => {
   };
 
   const handleAdd = () => {
-    if (selectedPrice == null) return; // safety
+    if (unavailable) return;
+    if (selectedPrice == null || !(selectedPrice > 0)) return; // safety
     addItem(product, { price: selectedPrice });
   };
 
@@ -119,7 +123,11 @@ const ProductCard = ({ product }) => {
       <h3 className="font-semibold text-sm line-clamp-2 min-h-[2.5em]">{title}</h3>
 
       {/* תווית מחיר: טווח כאשר hasRange, אחרת מחיר יחיד */}
-      {hasRange ? (
+      {unavailable ? (
+        <div className="mt-2 flex items-baseline gap-1.5">
+          <span className="text-sm font-semibold text-gray-400">אין מחיר למוצר</span>
+        </div>
+      ) : hasRange ? (
         <div className="mt-2 flex flex-col gap-0.5 text-xs">
           <div className="flex justify-between">
             <span className="text-gray-500">מינ׳</span>
@@ -141,7 +149,7 @@ const ProductCard = ({ product }) => {
       {/* בקר מחיר נשאר תמיד כאשר hasRange — גם לפני וגם אחרי שהמוצר בסל.
           לפני הוספה: עורך את selectedPrice המקומי.
           אחרי הוספה: עורך את unitPrice של השורה בסל ישירות. */}
-      {hasRange && (
+      {hasRange && !unavailable && (
         <div className="mt-2 flex items-center justify-between bg-white border-2 border-brand/30 rounded-xl overflow-hidden h-10">
           <button
             type="button"
@@ -180,11 +188,15 @@ const ProductCard = ({ product }) => {
       {quantity === 0 ? (
         <button
           onClick={handleAdd}
-          disabled={hasRange && selectedPrice == null}
+          disabled={unavailable || (hasRange && selectedPrice == null)}
           className="mt-2 w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-brand text-white text-sm font-semibold h-10 hover:bg-brand-dark active:scale-[0.98] transition disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-brand"
         >
           <FiPlus size={16} />
-          {hasRange && selectedPrice == null ? "בחר מחיר" : "הוסף לעגלה"}
+          {unavailable
+            ? "לא זמין"
+            : hasRange && selectedPrice == null
+              ? "בחר מחיר"
+              : "הוסף לעגלה"}
         </button>
       ) : (
         <div className="mt-2 flex items-center justify-between bg-brand text-white rounded-xl shadow-sm overflow-hidden h-10">

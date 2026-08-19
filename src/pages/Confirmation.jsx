@@ -20,27 +20,21 @@ const Confirmation = () => {
   if (!order)
     return (
       <div className="p-6 text-center">
-        <p>ההזמנה לא נמצאה</p>
+        <p>הצעת המחיר לא נמצאה</p>
         <Link to="/dashboard" className="btn-secondary mt-4 inline-flex">חזרה לדשבורד</Link>
       </div>
     );
-
-  const isQuote = order.orderType === "quote";
 
   return (
     <div className="px-4 sm:px-6 py-8 max-w-lg mx-auto text-center">
       <div className="w-20 h-20 mx-auto rounded-full bg-success/10 text-success flex items-center justify-center mb-4">
         <FiCheckCircle size={48} />
       </div>
-      <h1 className="text-2xl font-bold text-gray-800 mb-2">
-        {isQuote ? "הצעת המחיר נשמרה!" : "ההזמנה נשלחה!"}
-      </h1>
-      <p className="text-gray-500 mb-1">
-        {isQuote
-          ? "הצעת המחיר זמינה לצפייה ולהמרה להזמנה"
-          : "ההזמנה התקבלה במשרד לאישור וטיפול"}
+      <h1 className="text-2xl font-bold text-gray-800 mb-2">הצעת המחיר נשמרה!</h1>
+      <p className="text-gray-500 mb-1">הצעת המחיר נשלחה למשרד וזמינה לצפייה</p>
+      <p className="text-sm text-gray-400 mb-6">
+        מספר הצעה: {order.invoice || order._id.slice(-6)}
       </p>
-      <p className="text-sm text-gray-400 mb-6">מספר חשבונית: {order.invoice || "—"}</p>
 
       <div className="card p-4 text-start mb-6">
         <div className="flex justify-between mb-2">
@@ -59,7 +53,7 @@ const Confirmation = () => {
 
       <div className="grid grid-cols-2 gap-3">
         <Link to="/orders" className="btn-secondary">
-          <FiList /> כל ההזמנות
+          <FiList /> כל ההצעות
         </Link>
         <Link to="/dashboard" className="btn-primary">
           <FiHome /> חזרה לדשבורד
