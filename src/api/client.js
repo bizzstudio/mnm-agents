@@ -23,14 +23,26 @@ client.interceptors.request.use((config) => {
   return config;
 });
 
-// 401 → ניקוי טוקן והפניית הדפדפן לדף הלוגין (אם לא כבר שם).
+// נתיבים פומביים שהלקוח מגיע אליהם עם טוקן ב-URL. אם הלקוח פותח קישור
+// במכשיר שבו יש טוקן סוכן שפג (למשל הטאבלט של הסוכן), ריענון הפרופיל יחזיר
+// 401 — ואסור שזה יזרוק את הלקוח מדף ההצעה/ההסכם לדף הלוגין של הסוכן.
+const PUBLIC_PATH_PREFIXES = ["/quote/", "/sign-contract/"];
+const isPublicPath = () =>
+  typeof window !== "undefined" &&
+  PUBLIC_PATH_PREFIXES.some((prefix) => window.location.pathname.startsWith(prefix));
+
+// 401 → ניקוי טוקן והפניית הדפדפן לדף הלוגין (אם לא כבר שם, ולא בדף פומבי).
 client.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err?.response?.status === 401) {
       localStorage.removeItem("agentToken");
       localStorage.removeItem("agentInfo");
-      if (typeof window !== "undefined" && !window.location.pathname.endsWith("/login")) {
+      if (
+        typeof window !== "undefined" &&
+        !window.location.pathname.endsWith("/login") &&
+        !isPublicPath()
+      ) {
         window.location.href = "/login";
       }
     }

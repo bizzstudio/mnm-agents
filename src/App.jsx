@@ -16,6 +16,7 @@ import OrderDetail from "@/pages/OrderDetail";
 import Confirmation from "@/pages/Confirmation";
 import PendingContracts from "@/pages/PendingContracts";
 import SignContract from "@/pages/SignContract";
+import QuoteView from "@/pages/QuoteView";
 
 const App = () => (
   <AuthProvider>
@@ -25,6 +26,9 @@ const App = () => (
 
         {/* דף חתימה — public, אימות דרך הטוקן ב-URL. חייב להיות מחוץ ל-PrivateRoute. */}
         <Route path="/sign-contract/:token" element={<SignContract />} />
+
+        {/* דף הצעת מחיר ללקוח — public, אימות דרך הטוקן ב-URL. */}
+        <Route path="/quote/:token" element={<QuoteView />} />
 
         <Route
           element={

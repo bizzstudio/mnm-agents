@@ -5,27 +5,59 @@ import dayjs from "dayjs";
 import { listOrders } from "@/api/orders";
 import Loader from "@/components/common/Loader";
 import Empty from "@/components/common/Empty";
+import ApprovalBadge from "@/components/quote/ApprovalBadge";
+import { approvalOf } from "@/utils/quoteStatus";
+
+// סינון לפי מה שהלקוח עשה עם ההצעה. "בבדיקה" מאגד sent+viewed — מבחינת
+// הסוכן שני המצבים זהים: ההצעה אצל הלקוח וממתינה לתשובה.
+const FILTERS = [
+  { key: "", label: "הכל" },
+  { key: "sent,viewed", label: "בבדיקה" },
+  { key: "approved", label: "אושרו" },
+  { key: "rejected", label: "לא אושרו" },
+  { key: "draft", label: "טרם נשלחו" },
+];
 
 const MyOrders = () => {
   const [data, setData] = useState({ data: [], total: 0 });
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("");
 
   useEffect(() => {
     setLoading(true);
-    listOrders({ type: "quote", limit: 50 })
+    listOrders({ type: "quote", limit: 50, ...(filter ? { approval: filter } : {}) })
       .then(setData)
       .catch(() => setData({ data: [], total: 0 }))
       .finally(() => setLoading(false));
-  }, []);
+  }, [filter]);
 
   return (
     <div className="px-4 sm:px-6 py-5 max-w-4xl mx-auto">
-      <h1 className="text-xl font-bold text-gray-800 mb-4">הצעות המחיר שלי</h1>
+      <h1 className="text-xl font-bold text-gray-800 mb-3">הצעות המחיר שלי</h1>
+
+      <div className="flex gap-2 overflow-x-auto pb-2 mb-3 -mx-1 px-1">
+        {FILTERS.map((f) => (
+          <button
+            key={f.key}
+            onClick={() => setFilter(f.key)}
+            className={`px-3 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap border transition ${
+              filter === f.key
+                ? "bg-brand text-white border-brand"
+                : "bg-white text-gray-600 border-gray-200"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
 
       {loading ? (
         <Loader />
       ) : (data.data || []).length === 0 ? (
-        <Empty title="אין הצעות מחיר עדיין" description="עבור לקטלוג כדי ליצור הצעת מחיר ראשונה" />
+        <Empty
+          title="אין הצעות מחיר להצגה"
+          description={filter ? "נסה סינון אחר" : "עבור לקטלוג כדי ליצור הצעת מחיר ראשונה"}
+        />
       ) : (
         <div className="space-y-2">
           {data.data.map((o) => (
@@ -43,15 +75,8 @@ const MyOrders = () => {
                 </h3>
                 <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-gray-500">
                   <span>{dayjs(o.createdAt).format("DD/MM/YYYY HH:mm")}</span>
-                  {o.status?.heName && (
-                    <span
-                      className="px-2 py-0.5 rounded-full text-white text-[10px]"
-                      style={{ background: o.status.color || "#6b7280" }}
-                    >
-                      {o.status.heName}
-                    </span>
-                  )}
-                  <span>הצעת מחיר</span>
+                  <ApprovalBadge approval={approvalOf(o)} />
+                  <span>#{o.invoice || o._id.slice(-6)}</span>
                 </div>
               </div>
               <div className="text-end">

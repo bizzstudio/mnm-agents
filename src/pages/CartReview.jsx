@@ -5,6 +5,7 @@ import { useCart } from "@/context/CartContext";
 import { createOrder } from "@/api/orders";
 import QuantityInput from "@/components/common/QuantityInput";
 import Empty from "@/components/common/Empty";
+import PriceScale from "@/components/quote/PriceScale";
 import { DEFAULT_PRODUCT_IMAGE, getPrimaryProductImageUrl } from "@/utils/productImage";
 
 const PRICE_STEP = 0.1;
@@ -185,6 +186,17 @@ const CartReview = () => {
                     <p className="font-bold text-lg">₪{lineTotal.toLocaleString()}</p>
                   </div>
                 </div>
+
+                {/* איפה המחיר שנבחר יושב בטווח המותר — תצוגה פנימית לסוכן */}
+                {hasRange && (
+                  <div className="mt-3 pt-3 border-t border-dashed border-gray-200">
+                    <PriceScale
+                      price={i.unitPrice}
+                      min={i.allowedMin}
+                      max={i.allowedMax}
+                    />
+                  </div>
+                )}
               </div>
             );
           })}
