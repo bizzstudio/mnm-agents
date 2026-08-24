@@ -9,11 +9,12 @@ import {
 } from "react-icons/fi";
 import dayjs from "dayjs";
 import { getOrder, setQuoteApproval } from "@/api/orders";
+import { useAuth } from "@/context/AuthContext";
 import Loader from "@/components/common/Loader";
 import ApprovalBadge from "@/components/quote/ApprovalBadge";
 import PriceScale from "@/components/quote/PriceScale";
 import QuoteActions from "@/components/quote/QuoteActions";
-import { approvalOf, hasResponded, VAT_NOTE } from "@/utils/quoteStatus";
+import { approvalOf, hasResponded, vatBreakdownForLines } from "@/utils/quoteStatus";
 import { DEFAULT_PRODUCT_IMAGE, getPrimaryProductImageUrl } from "@/utils/productImage";
 
 const errText = (err) => {
@@ -31,6 +32,7 @@ const EVENT_LABELS = {
 };
 
 const OrderDetail = () => {
+  const { agent } = useAuth();
   const { id } = useParams();
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
@@ -89,6 +91,8 @@ const OrderDetail = () => {
   const approval = approvalOf(order);
   const responded = hasResponded(approval);
   const q = order.quote || {};
+  // order.total הוא לפני מע"מ; הפירוט תצוגתי בלבד.
+  const vat = vatBreakdownForLines(order.cart, order.total, agent?.vatPercent);
   const events = [...(q.events || [])].reverse();
 
   return (
@@ -285,23 +289,35 @@ const OrderDetail = () => {
       </div>
 
       <div className="card p-4 mb-4">
-        <div className="flex justify-between mb-1 text-sm">
-          <span>סכום ביניים</span>
-          <span>₪{(order.subTotal || 0).toLocaleString()}</span>
-        </div>
+        {order.agentDiscountAmount > 0 && (
+          <div className="flex justify-between mb-1 text-sm">
+            <span>סכום ביניים</span>
+            <span>₪{(order.subTotal || 0).toLocaleString()}</span>
+          </div>
+        )}
         {order.agentDiscountAmount > 0 && (
           <div className="flex justify-between mb-1 text-sm text-danger-dark">
             <span>הנחת סוכן ({order.agentDiscountPercent}%)</span>
             <span>-₪{order.agentDiscountAmount.toLocaleString()}</span>
           </div>
         )}
-        <div className="flex justify-between font-bold text-lg pt-2 border-t border-gray-100">
-          <span>סה"כ</span>
-          <span className="text-brand-dark">₪{order.total.toLocaleString()}</span>
+        <div className="flex justify-between text-sm pt-2 border-t border-gray-100">
+          <span className="text-gray-600">סה"כ לפני מע"מ</span>
+          <span>₪{vat.base.toLocaleString()}</span>
         </div>
-        <p className="mt-2 text-center font-bold text-xs text-brand-dark bg-brand-superLight rounded-lg py-1.5">
-          {VAT_NOTE}
-        </p>
+        <div className="flex justify-between text-sm mt-1">
+          <span className="text-gray-600">מע"מ {vat.percent}%</span>
+          <span>₪{vat.vat.toLocaleString()}</span>
+        </div>
+        {vat.hasExempt && (
+          <p className="text-[11px] text-gray-500 mt-1">
+            ₪{vat.exemptBase.toLocaleString()} פטורים ממע"מ (פירות וירקות)
+          </p>
+        )}
+        <div className="flex justify-between font-bold text-lg pt-2 mt-1 border-t border-gray-100">
+          <span>סה"כ לתשלום</span>
+          <span className="text-brand-dark">₪{vat.total.toLocaleString()}</span>
+        </div>
       </div>
 
       {/* יומן ההצעה — "איפה זה עומד מבחינת הלקוח" */}

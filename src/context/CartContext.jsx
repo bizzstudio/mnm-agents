@@ -109,6 +109,9 @@ export const CartProvider = ({ children }) => {
             allowedMin,
             allowedMax,
             pricingMode: pricing.mode || "list",
+            // פטור ממע"מ (פירות/ירקות) — מגיע מהקטלוג הראשי, לתצוגת המע"מ
+            // בעגלה. השרת קובע מחדש בעת השמירה ואינו סומך על הערך הזה.
+            isVatFree: product.isVatFree === true,
           },
         ],
       };

@@ -2,18 +2,20 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FiTrash2, FiArrowRight, FiFileText, FiMinus, FiPlus } from "react-icons/fi";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 import { createOrder } from "@/api/orders";
 import QuantityInput from "@/components/common/QuantityInput";
 import Empty from "@/components/common/Empty";
 import PriceScale from "@/components/quote/PriceScale";
 import { DEFAULT_PRODUCT_IMAGE, getPrimaryProductImageUrl } from "@/utils/productImage";
-import { VAT_NOTE } from "@/utils/quoteStatus";
+import { vatBreakdownForLines } from "@/utils/quoteStatus";
 
 const PRICE_STEP = 0.1;
 const round2 = (n) => Math.round(Number(n) * 100) / 100;
 
 const CartReview = () => {
   const navigate = useNavigate();
+  const { agent } = useAuth();
   const {
     cart,
     activeMainCustomerId,
@@ -27,6 +29,9 @@ const CartReview = () => {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  // סכומי העגלה הם לפני מע"מ; מוצג פירוט כדי שהסוכן יראה את הסכום הסופי.
+  const vat = vatBreakdownForLines(cart.items, totals.total, agent?.vatPercent);
 
   if (!activeMainCustomerId) {
     return (
@@ -216,13 +221,23 @@ const CartReview = () => {
           </div>
 
           <div className="card p-4 bg-brand-superLight border-brand/20">
-            <div className="flex justify-between text-lg font-bold border-t border-brand/20 pt-2 mt-2">
-              <span>סה"כ</span>
-              <span className="text-brand-dark">₪{totals.total.toLocaleString()}</span>
+            <div className="flex justify-between text-sm border-t border-brand/20 pt-2 mt-2">
+              <span className="text-gray-600">סה"כ לפני מע"מ</span>
+              <span>₪{vat.base.toLocaleString()}</span>
             </div>
-            <p className="mt-2 text-center font-bold text-xs text-brand-dark">
-              {VAT_NOTE}
-            </p>
+            <div className="flex justify-between text-sm mt-1">
+              <span className="text-gray-600">מע"מ {vat.percent}%</span>
+              <span>₪{vat.vat.toLocaleString()}</span>
+            </div>
+            {vat.hasExempt && (
+              <p className="text-[11px] text-gray-500 mt-1">
+                ₪{vat.exemptBase.toLocaleString()} פטורים ממע"מ (פירות וירקות)
+              </p>
+            )}
+            <div className="flex justify-between text-lg font-bold border-t border-brand/20 pt-2 mt-2">
+              <span>סה"כ לתשלום</span>
+              <span className="text-brand-dark">₪{vat.total.toLocaleString()}</span>
+            </div>
           </div>
 
           {error && (

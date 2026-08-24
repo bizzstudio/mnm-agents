@@ -6,6 +6,7 @@
 // בשני המסלולים ההצעה עוברת ל"נשלחה ללקוח — בבדיקה".
 
 import { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 import { FiCopy, FiMail, FiX, FiLink, FiCheck } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
 import { sendQuoteToCustomer, getQuoteShareLink } from "@/api/orders";
@@ -26,6 +27,9 @@ const waNumber = (phone) => {
 };
 
 const SendQuoteModal = ({ order, onClose, onSent }) => {
+  // "הוכן ע"י" — הסוכן המחובר, שמקבל עותק של כל הצעה שנשלחת.
+  const { agent } = useAuth();
+  const agentEmail = agent?.email || "";
   const defaultEmail = order?.mainCustomer?.email || order?.user_info?.email || "";
   const [email, setEmail] = useState(defaultEmail);
   const [message, setMessage] = useState("");
@@ -141,6 +145,11 @@ const SendQuoteModal = ({ order, onClose, onSent }) => {
             placeholder="customer@example.com"
             className="field mt-1"
           />
+          {agentEmail && (
+            <span className="block text-xs text-gray-500 mt-1">
+              עותק יישלח אוטומטית גם אליך (<span dir="ltr">{agentEmail}</span>)
+            </span>
+          )}
         </label>
 
         <label className="block mb-4">

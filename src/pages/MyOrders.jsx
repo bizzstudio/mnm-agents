@@ -80,9 +80,12 @@ const MyOrders = () => {
                 </div>
               </div>
               <div className="text-end">
+                {/* הסכום השמור הוא לפני מע"מ (כמו בכל הדוחות והיעדים). מציינים
+                    זאת כדי שלא ייראה כסתירה מול "סה"כ לתשלום" במסך ההצעה. */}
                 <p className="font-bold text-brand-dark">
                   ₪{(o.total || 0).toLocaleString()}
                 </p>
+                <p className="text-[10px] text-gray-400 leading-tight">לפני מע"מ</p>
                 <p className="text-xs text-gray-400">{o.cart?.length || 0} פריטים</p>
               </div>
             </Link>

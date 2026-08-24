@@ -16,7 +16,6 @@ import {
     quotePrintUrl,
     quotePdfUrl,
 } from "@/api/quotePublic";
-import { VAT_NOTE } from "@/utils/quoteStatus";
 
 const money = (n) =>
     `₪${Number(n || 0).toLocaleString("he-IL", {
@@ -148,12 +147,10 @@ const QuoteView = () => {
                             {(quote.items || []).map((it, i) => (
                                 <tr key={i} className="border-t border-gray-100">
                                     <td className="p-3">
-                                        <span className="font-medium">{it.title}</span>
-                                        {it.barcode && (
-                                            <span className="block text-[11px] text-gray-400" dir="ltr">
-                                                {it.barcode}
-                                            </span>
-                                        )}
+                                        <span className="font-medium">{it.title}
+                                        {it.vatFree && (
+                                            <span className="text-[11px] text-amber-700"> *</span>
+                                        )}</span>
                                     </td>
                                     <td className="p-3 text-center">{it.quantity}</td>
                                     <td className="p-3 text-center">{money(it.price)}</td>
@@ -166,23 +163,50 @@ const QuoteView = () => {
                     </table>
 
                     <div className="p-4 border-t border-gray-100">
-                        <div className="flex justify-between text-sm mb-1">
-                            <span className="text-gray-500">סכום ביניים</span>
-                            <span>{money(quote.subTotal)}</span>
-                        </div>
+                        {quote.discount > 0 && (
+                            <div className="flex justify-between text-sm mb-1">
+                                <span className="text-gray-500">סכום ביניים</span>
+                                <span>{money(quote.subTotal)}</span>
+                            </div>
+                        )}
                         {quote.discount > 0 && (
                             <div className="flex justify-between text-sm mb-1 text-red-600">
                                 <span>הנחה</span>
                                 <span>-{money(quote.discount)}</span>
                             </div>
                         )}
-                        <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-100">
-                            <span>סה"כ</span>
-                            <span className="text-green-800">{money(quote.total)}</span>
-                        </div>
-                        <p className="mt-3 text-center font-bold text-sm text-green-900 bg-green-50 border border-green-200 rounded-xl py-2">
-                            {VAT_NOTE}
-                        </p>
+                        {quote.totalWithVat != null ? (
+                            <>
+                                <div className="flex justify-between text-sm mb-1 pt-2 border-t border-gray-100">
+                                    <span className="text-gray-500">סה"כ לפני מע"מ</span>
+                                    <span>{money(quote.total)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm mb-1">
+                                    <span className="text-gray-500">מע"מ {quote.vatPercent}%</span>
+                                    <span>{money(quote.vatAmount)}</span>
+                                </div>
+                                {quote.vatExemptAmount > 0 && (
+                                    <div className="flex justify-between text-xs mb-1 text-gray-400">
+                                        <span>מזה פטור ממע"מ</span>
+                                        <span>{money(quote.vatExemptAmount)}</span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-100">
+                                    <span>סה"כ לתשלום</span>
+                                    <span className="text-green-800">{money(quote.totalWithVat)}</span>
+                                </div>
+                                {quote.vatExemptAmount > 0 && (
+                                    <p className="text-[11px] text-gray-400 mt-2">
+                                        * פריטים המסומנים בכוכבית פטורים ממע"מ.
+                                    </p>
+                                )}
+                            </>
+                        ) : (
+                            <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-100">
+                                <span>סה"כ</span>
+                                <span className="text-green-800">{money(quote.total)}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
