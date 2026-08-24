@@ -16,6 +16,7 @@ import {
     quotePrintUrl,
     quotePdfUrl,
 } from "@/api/quotePublic";
+import { VAT_NOTE } from "@/utils/quoteStatus";
 
 const money = (n) =>
     `₪${Number(n || 0).toLocaleString("he-IL", {
@@ -179,6 +180,9 @@ const QuoteView = () => {
                             <span>סה"כ</span>
                             <span className="text-green-800">{money(quote.total)}</span>
                         </div>
+                        <p className="mt-3 text-center font-bold text-sm text-green-900 bg-green-50 border border-green-200 rounded-xl py-2">
+                            {VAT_NOTE}
+                        </p>
                     </div>
                 </div>
 

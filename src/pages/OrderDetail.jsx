@@ -13,7 +13,7 @@ import Loader from "@/components/common/Loader";
 import ApprovalBadge from "@/components/quote/ApprovalBadge";
 import PriceScale from "@/components/quote/PriceScale";
 import QuoteActions from "@/components/quote/QuoteActions";
-import { approvalOf, hasResponded } from "@/utils/quoteStatus";
+import { approvalOf, hasResponded, VAT_NOTE } from "@/utils/quoteStatus";
 import { DEFAULT_PRODUCT_IMAGE, getPrimaryProductImageUrl } from "@/utils/productImage";
 
 const errText = (err) => {
@@ -299,6 +299,9 @@ const OrderDetail = () => {
           <span>סה"כ</span>
           <span className="text-brand-dark">₪{order.total.toLocaleString()}</span>
         </div>
+        <p className="mt-2 text-center font-bold text-xs text-brand-dark bg-brand-superLight rounded-lg py-1.5">
+          {VAT_NOTE}
+        </p>
       </div>
 
       {/* יומן ההצעה — "איפה זה עומד מבחינת הלקוח" */}

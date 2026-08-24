@@ -7,6 +7,7 @@ import QuantityInput from "@/components/common/QuantityInput";
 import Empty from "@/components/common/Empty";
 import PriceScale from "@/components/quote/PriceScale";
 import { DEFAULT_PRODUCT_IMAGE, getPrimaryProductImageUrl } from "@/utils/productImage";
+import { VAT_NOTE } from "@/utils/quoteStatus";
 
 const PRICE_STEP = 0.1;
 const round2 = (n) => Math.round(Number(n) * 100) / 100;
@@ -219,6 +220,9 @@ const CartReview = () => {
               <span>סה"כ</span>
               <span className="text-brand-dark">₪{totals.total.toLocaleString()}</span>
             </div>
+            <p className="mt-2 text-center font-bold text-xs text-brand-dark">
+              {VAT_NOTE}
+            </p>
           </div>
 
           {error && (

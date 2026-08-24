@@ -17,3 +17,7 @@ export const approvalMeta = (key) => QUOTE_APPROVAL[key] || QUOTE_APPROVAL.draft
 
 // האם הלקוח כבר השיב (אושר/לא אושר) — חוסם שליחה חוזרת "בשקט".
 export const hasResponded = (key) => key === "approved" || key === "rejected";
+
+// הצעות הסוכנים נקובות ללא מע"מ ואין במסמך חישוב מע"מ. ההערה מוצגת בכל מקום
+// שמוצג בו סכום (עגלה, מסך ההצעה, דף הלקוח) ובמסמך עצמו (quoteDocumentService).
+export const VAT_NOTE = 'המחירים אינם כוללים מע"מ';
