@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { FiArrowRight } from "react-icons/fi";
+import { FiArrowRight, FiCheckCircle, FiSend } from "react-icons/fi";
 import { createCustomer } from "@/api/customers";
 import { sendContract } from "@/api/contracts";
 import { useCart } from "@/context/CartContext";
@@ -18,15 +18,17 @@ const NewCustomer = () => {
     contactFirstName: "",
     contactLastName: "",
   });
-  const [sendContractOnCreate, setSendContractOnCreate] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  // הלקוח שנוצר — מוצג מסך סיום עם כפתור לשליחת ההסכם.
+  // ההסכם *אינו* נשלח אוטומטית: השליחה היא החלטה מפורשת של הסוכן.
+  const [createdCustomer, setCreatedCustomer] = useState(null);
+  const [sendingContract, setSendingContract] = useState(false);
   const [contractNotice, setContractNotice] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    setContractNotice("");
     if (!form.name || !form.email) {
       setError("שם ואימייל חובה");
       return;
@@ -35,19 +37,7 @@ const NewCustomer = () => {
     try {
       const created = await createCustomer(form);
       switchCustomer(created._id);
-
-      // שליחת הסכם — הכשלה כאן לא הופכת את היצירה ללא תקפה.
-      if (sendContractOnCreate) {
-        try {
-          const r = await sendContract(created._id, false);
-          setContractNotice(`הסכם נשלח ללקוח (${r.sentToEmail})`);
-        } catch (contractErr) {
-          const msg = contractErr?.response?.data?.message || "";
-          setContractNotice(`לקוח נוצר, אך שליחת ההסכם נכשלה: ${msg}`);
-        }
-      }
-
-      navigate("/catalog");
+      setCreatedCustomer(created);
     } catch (err) {
       const msg = err?.response?.data?.message;
       setError(typeof msg === "object" ? msg.he || msg.en : msg || "שגיאה ביצירת לקוח");
@@ -56,7 +46,68 @@ const NewCustomer = () => {
     }
   };
 
+  // שליחת ההסכם ביוזמת הסוכן. כישלון כאן אינו פוגע בלקוח שכבר נוצר.
+  const handleSendContract = async () => {
+    if (!createdCustomer?._id) return;
+    setSendingContract(true);
+    setContractNotice("");
+    try {
+      const r = await sendContract(createdCustomer._id, false);
+      setContractNotice(
+        r.created
+          ? `ההסכם נשלח ללקוח${r.sentToEmail ? ` (${r.sentToEmail})` : ""}`
+          : `כבר קיים הסכם פעיל ללקוח${r.status ? ` (${r.status})` : ""}`
+      );
+    } catch (err) {
+      const msg = err?.response?.data?.message;
+      setContractNotice(
+        `שליחת ההסכם נכשלה: ${typeof msg === "object" ? msg.he || msg.en : msg || "שגיאה"}`
+      );
+    } finally {
+      setSendingContract(false);
+    }
+  };
+
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  // אחרי היצירה: מסך סיום עם שליחת ההסכם כפעולה נפרדת ומפורשת.
+  if (createdCustomer) {
+    return (
+      <div className="px-4 sm:px-6 py-5 max-w-2xl mx-auto">
+        <div className="card p-5 text-center">
+          <FiCheckCircle className="mx-auto text-4xl text-success mb-3" />
+          <h1 className="text-xl font-bold text-gray-800 mb-1">הלקוח נוצר</h1>
+          <p className="text-gray-500 text-sm mb-5">{createdCustomer.name}</p>
+
+          <button
+            onClick={handleSendContract}
+            disabled={sendingContract}
+            className="btn-primary w-full mb-2"
+          >
+            <FiSend /> {sendingContract ? "שולח..." : "שלח הסכם לחתימה"}
+          </button>
+          <p className="text-xs text-gray-400 mb-4">
+            יישלח ללקוח מייל עם קישור לחתימה דיגיטלית
+          </p>
+
+          {contractNotice && (
+            <div className="rounded-xl bg-blue-50 text-blue-800 px-4 py-3 text-sm mb-4 text-start">
+              {contractNotice}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={() => navigate("/catalog")} className="btn-primary">
+              המשך לקטלוג
+            </button>
+            <Link to="/customers" className="btn-secondary justify-center">
+              לרשימת הלקוחות
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 sm:px-6 py-5 max-w-2xl mx-auto">
@@ -127,32 +178,14 @@ const NewCustomer = () => {
           </label>
         </div>
 
-        <label className="flex items-start gap-2 text-sm cursor-pointer pt-2 border-t border-gray-100">
-          <input
-            type="checkbox"
-            checked={sendContractOnCreate}
-            onChange={(e) => setSendContractOnCreate(e.target.checked)}
-            className="mt-1"
-          />
-          <span className="text-gray-700">
-            שלח ללקוח הסכם דיגיטלי לחתימה (יישלח אליו מייל עם לינק לחתימה).
-          </span>
-        </label>
-
         {error && (
           <div className="rounded-xl bg-danger/10 text-danger-dark px-4 py-3 text-sm font-medium">
             {error}
           </div>
         )}
 
-        {contractNotice && (
-          <div className="rounded-xl bg-blue-50 text-blue-800 px-4 py-3 text-sm">
-            {contractNotice}
-          </div>
-        )}
-
         <button type="submit" className="btn-primary w-full" disabled={submitting}>
-          {submitting ? "שומר..." : "יצירה והמשך לקטלוג"}
+          {submitting ? "שומר..." : "יצירת לקוח"}
         </button>
       </form>
     </div>

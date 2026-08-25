@@ -5,7 +5,7 @@ import { getOrder } from "@/api/orders";
 import Loader from "@/components/common/Loader";
 import ApprovalBadge from "@/components/quote/ApprovalBadge";
 import QuoteActions from "@/components/quote/QuoteActions";
-import { approvalOf } from "@/utils/quoteStatus";
+import { approvalOf, quoteNumberOf } from "@/utils/quoteStatus";
 
 const Confirmation = () => {
   const { id } = useParams();
@@ -28,7 +28,7 @@ const Confirmation = () => {
       </div>
     );
 
-  const quoteNo = order.invoice || order._id.slice(-6);
+  const quoteNo = quoteNumberOf(order);
 
   return (
     <div className="px-4 sm:px-6 py-8 max-w-lg mx-auto text-center">

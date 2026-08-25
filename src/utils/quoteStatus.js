@@ -13,6 +13,13 @@ export const QUOTE_APPROVAL = {
 
 export const approvalOf = (order) => order?.quote?.approval || "draft";
 
+// מספר ההצעה כפי שמוצג ללקוח: הסדרה הרצה שמתחילה ב-10001. הצעות שנוצרו לפני
+// שהמספור הופעל נופלות ל-invoice ואז לסיומת המזהה (כמו בבקאנד, quoteNumber).
+export const quoteNumberOf = (order) =>
+  order?.quote?.number ||
+  order?.invoice ||
+  String(order?._id || "").slice(-6).toUpperCase();
+
 export const approvalMeta = (key) => QUOTE_APPROVAL[key] || QUOTE_APPROVAL.draft;
 
 // האם הלקוח כבר השיב (אושר/לא אושר) — חוסם שליחה חוזרת "בשקט".

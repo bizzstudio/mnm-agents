@@ -14,7 +14,7 @@ import Loader from "@/components/common/Loader";
 import ApprovalBadge from "@/components/quote/ApprovalBadge";
 import PriceScale from "@/components/quote/PriceScale";
 import QuoteActions from "@/components/quote/QuoteActions";
-import { approvalOf, hasResponded, vatBreakdownForLines } from "@/utils/quoteStatus";
+import { approvalOf, hasResponded, vatBreakdownForLines, quoteNumberOf } from "@/utils/quoteStatus";
 import { DEFAULT_PRODUCT_IMAGE, getPrimaryProductImageUrl } from "@/utils/productImage";
 
 const errText = (err) => {
@@ -105,7 +105,7 @@ const OrderDetail = () => {
           <FiArrowRight />
         </button>
         <h1 className="text-xl font-bold text-gray-800">
-          הצעת מחיר #{order.invoice || order._id.slice(-6)}
+          הצעת מחיר #{quoteNumberOf(order)}
         </h1>
         <ApprovalBadge approval={approval} className="ms-auto" />
       </div>

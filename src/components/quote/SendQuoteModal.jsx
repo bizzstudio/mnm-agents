@@ -10,20 +10,12 @@ import { useAuth } from "@/context/AuthContext";
 import { FiCopy, FiMail, FiX, FiLink, FiCheck } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
 import { sendQuoteToCustomer, getQuoteShareLink } from "@/api/orders";
+import { whatsappUrl } from "@/utils/whatsapp";
 
 const errText = (err) => {
   const msg = err?.response?.data?.message;
   if (typeof msg === "object") return msg.he || msg.en;
   return msg || "שגיאה בשליחה";
-};
-
-// מנרמל טלפון ישראלי ל-wa.me (972…). מחזיר null אם לא נראה כמו מספר.
-const waNumber = (phone) => {
-  const digits = String(phone || "").replace(/\D/g, "");
-  if (digits.length < 9) return null;
-  if (digits.startsWith("972")) return digits;
-  if (digits.startsWith("0")) return `972${digits.slice(1)}`;
-  return digits;
 };
 
 const SendQuoteModal = ({ order, onClose, onSent }) => {
@@ -71,13 +63,15 @@ const SendQuoteModal = ({ order, onClose, onSent }) => {
     return res.url;
   };
 
-  const waUrl = (url) => {
-    const text = `שלום${order?.mainCustomer?.name ? ` ${order.mainCustomer.name}` : ""},\nמצורפת הצעת מחיר ${quoteNo} בסך ₪${Number(order?.total || 0).toLocaleString()}.\nלצפייה ואישור: ${url}`;
-    const num = waNumber(order?.mainCustomer?.phone || order?.user_info?.contact);
-    return num
-      ? `https://wa.me/${num}?text=${encodeURIComponent(text)}`
-      : `https://wa.me/?text=${encodeURIComponent(text)}`;
-  };
+  const customerPhone = order?.mainCustomer?.phone || order?.user_info?.contact;
+
+  const buildMessage = (url) =>
+    `שלום${order?.mainCustomer?.name ? ` ${order.mainCustomer.name}` : ""},\n` +
+    `מצורפת הצעת מחיר ${quoteNo} בסך ₪${Number(order?.total || 0).toLocaleString()}.\n` +
+    `לצפייה ואישור: ${url}`;
+
+  // באנדרואיד הכתובת מכוונת ל-WhatsApp Business; ראה utils/whatsapp.
+  const waUrl = (url) => whatsappUrl(customerPhone, buildMessage(url));
 
   const handleWhatsapp = async () => {
     setError("");
@@ -102,18 +96,20 @@ const SendQuoteModal = ({ order, onClose, onSent }) => {
     }
   };
 
-  const handleCopy = async () => {
+  // mode: "link" — הקישור בלבד | "message" — ההודעה המלאה לוואטסאפ ביזנס
+  const handleCopy = async (mode = "link") => {
     setError("");
     setNotice("");
-    setBusy("copy");
+    setBusy(mode === "message" ? "copyMsg" : "copy");
     try {
       const url = await ensureLink();
+      const value = mode === "message" ? buildMessage(url) : url;
       try {
         // clipboard זמין רק ב-secure context (HTTPS/localhost). בטאבלט שמחובר
         // ל-IP פנימי ב-HTTP הוא לא קיים — ואז מציגים את הקישור לבחירה ידנית.
         if (!navigator.clipboard?.writeText) throw new Error("no clipboard");
-        await navigator.clipboard.writeText(url);
-        setCopied(true);
+        await navigator.clipboard.writeText(value);
+        setCopied(mode === "message" ? "message" : "link");
         setTimeout(() => setCopied(false), 2500);
       } catch {
         setNotice("הדפדפן לא מאפשר העתקה אוטומטית — הקישור למטה, סמן והעתק");
@@ -187,13 +183,25 @@ const SendQuoteModal = ({ order, onClose, onSent }) => {
           <FiMail /> {busy === "email" ? "שולח..." : "שלח במייל (כולל PDF)"}
         </button>
 
+        <button onClick={handleWhatsapp} disabled={!!busy} className="btn-secondary w-full mb-2">
+          <FaWhatsapp className="text-green-600" />{" "}
+          {busy === "wa" ? "פותח..." : "שליחה בוואטסאפ"}
+        </button>
+
         <div className="grid grid-cols-2 gap-2">
-          <button onClick={handleWhatsapp} disabled={!!busy} className="btn-secondary">
-            <FaWhatsapp className="text-green-600" /> וואטסאפ
+          {/* באייפון אי אפשר לכוון לוואטסאפ ביזנס — העתקת ההודעה היא הדרך
+              להדביק אותה באפליקציה שהסוכן בוחר. */}
+          <button
+            onClick={() => handleCopy("message")}
+            disabled={!!busy}
+            className="btn-secondary"
+          >
+            {copied === "message" ? <FiCheck className="text-success" /> : <FiCopy />}{" "}
+            {copied === "message" ? "הועתק" : "העתק הודעה"}
           </button>
-          <button onClick={handleCopy} disabled={!!busy} className="btn-secondary">
-            {copied ? <FiCheck className="text-success" /> : <FiCopy />}{" "}
-            {copied ? "הועתק" : "העתק קישור"}
+          <button onClick={() => handleCopy("link")} disabled={!!busy} className="btn-secondary">
+            {copied === "link" ? <FiCheck className="text-success" /> : <FiCopy />}{" "}
+            {copied === "link" ? "הועתק" : "העתק קישור"}
           </button>
         </div>
 

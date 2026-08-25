@@ -6,7 +6,7 @@ import { listOrders } from "@/api/orders";
 import Loader from "@/components/common/Loader";
 import Empty from "@/components/common/Empty";
 import ApprovalBadge from "@/components/quote/ApprovalBadge";
-import { approvalOf } from "@/utils/quoteStatus";
+import { approvalOf, quoteNumberOf } from "@/utils/quoteStatus";
 
 // סינון לפי מה שהלקוח עשה עם ההצעה. "בבדיקה" מאגד sent+viewed — מבחינת
 // הסוכן שני המצבים זהים: ההצעה אצל הלקוח וממתינה לתשובה.
@@ -76,7 +76,7 @@ const MyOrders = () => {
                 <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-gray-500">
                   <span>{dayjs(o.createdAt).format("DD/MM/YYYY HH:mm")}</span>
                   <ApprovalBadge approval={approvalOf(o)} />
-                  <span>#{o.invoice || o._id.slice(-6)}</span>
+                  <span>#{quoteNumberOf(o)}</span>
                 </div>
               </div>
               <div className="text-end">
