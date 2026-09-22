@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { FiSearch, FiPlus, FiMinus, FiShoppingCart, FiUser } from "react-icons/fi";
 import { listProducts, listCategories } from "@/api/products";
@@ -6,6 +6,7 @@ import { useCart } from "@/context/CartContext";
 import Loader from "@/components/common/Loader";
 import Empty from "@/components/common/Empty";
 import { DEFAULT_PRODUCT_IMAGE, getPrimaryProductImageUrl } from "@/utils/productImage";
+import { PRICE_TIER_LABELS, OUT_OF_RANGE_LABELS, outOfRangeOf } from "@/utils/priceTiers";
 
 const PRICE_STEP = 0.1;
 const round2 = (n) => Math.round(Number(n) * 100) / 100;
@@ -37,13 +38,15 @@ const ProductCard = ({ product }) => {
   const effectivePrice = inCart ? inCart.unitPrice : selectedPrice;
 
   // טיוטת הקלדה: מחרוזת כשהשדה במצב עריכה, null אחרת. מאפשרת להקליד ערך
-  // ביניים שיוצא זמנית מהטווח (למשל "6" בדרך ל-"6.93" כשהמינימום הוא 6.6)
-  // בלי לקפוץ. אכיפת הטווח קורית ב-blur.
+  // ביניים (למשל "6" בדרך ל-"6.93") בלי שהשדה יקפוץ.
   const [draftPrice, setDraftPrice] = useState(null);
   const isEditingPrice = draftPrice !== null;
   const displayValue = isEditingPrice ? draftPrice : effectivePrice ?? "";
 
-  const clamp = (v) => Math.max(minP, Math.min(maxP, round2(v)));
+  // המחיר אינו נחתך לטווח: מחיר מחוץ לטווח מעביר את ההצעה לאישור מחיר.
+  // רק רצפה של צעד אחד, כדי שהמינוס לא יגיע ל-0.
+  const normalize = (v) => Math.max(PRICE_STEP, round2(v));
+  const outOfRange = hasRange ? outOfRangeOf(effectivePrice, minP, maxP) : null;
 
   // עדכון מחיר: בסל → updateLinePrice של הקונטקסט; לפני הוספה → state מקומי
   const setPrice = (value) => {
@@ -59,7 +62,7 @@ const ProductCard = ({ product }) => {
       // לחיצה ראשונה על מינוס (רק במצב לפני הוספה) → התחלה מהמקס
       setPrice(maxP);
     } else {
-      setPrice(clamp(effectivePrice - PRICE_STEP));
+      setPrice(normalize(effectivePrice - PRICE_STEP));
     }
   };
 
@@ -67,17 +70,16 @@ const ProductCard = ({ product }) => {
     if (effectivePrice == null) {
       setPrice(minP);
     } else {
-      setPrice(clamp(effectivePrice + PRICE_STEP));
+      setPrice(normalize(effectivePrice + PRICE_STEP));
     }
   };
 
   const handleInput = (e) => {
     const raw = e.target.value;
     setDraftPrice(raw);
-    // עדכון לייב של המחיר רק כשהערך תקין ובתוך הטווח, כדי שטוטאל הסל יתעדכן
-    // תוך כדי הקלדה. ערכים מחוץ לטווח לא נשמרים אלא יוצנמו ב-blur.
+    // עדכון לייב של המחיר כשהערך חיובי, כדי שטוטאל הסל יתעדכן תוך כדי הקלדה.
     const v = parseFloat(raw);
-    if (Number.isFinite(v) && v >= minP && v <= maxP) {
+    if (Number.isFinite(v) && v > 0) {
       setPrice(round2(v));
     }
   };
@@ -89,8 +91,8 @@ const ProductCard = ({ product }) => {
 
   const handlePriceBlur = () => {
     const v = parseFloat(draftPrice);
-    if (Number.isFinite(v)) {
-      setPrice(clamp(v));
+    if (Number.isFinite(v) && v > 0) {
+      setPrice(normalize(v));
     }
     setDraftPrice(null);
   };
@@ -150,7 +152,11 @@ const ProductCard = ({ product }) => {
           לפני הוספה: עורך את selectedPrice המקומי.
           אחרי הוספה: עורך את unitPrice של השורה בסל ישירות. */}
       {hasRange && !unavailable && (
-        <div className="mt-2 flex items-center justify-between bg-white border-2 border-brand/30 rounded-xl overflow-hidden h-10">
+        <div
+          className={`mt-2 flex items-center justify-between bg-white border-2 rounded-xl overflow-hidden h-10 ${
+            outOfRange ? "border-amber-400" : "border-brand/30"
+          }`}
+        >
           <button
             type="button"
             onClick={handleMinus}
@@ -165,8 +171,7 @@ const ProductCard = ({ product }) => {
             step={PRICE_STEP}
             value={displayValue}
             placeholder="בחר מחיר"
-            min={minP}
-            max={maxP}
+            min={0}
             onChange={handleInput}
             onFocus={handlePriceFocus}
             onBlur={handlePriceBlur}
@@ -182,6 +187,11 @@ const ProductCard = ({ product }) => {
             <FiPlus size={16} />
           </button>
         </div>
+      )}
+      {outOfRange && (
+        <p className="mt-1 text-[11px] font-semibold text-amber-700 leading-tight">
+          {OUT_OF_RANGE_LABELS[outOfRange]}
+        </p>
       )}
 
       {/* פעולה: כפתור הוספה כאשר המוצר לא בסל, בקר כמות כאשר כבר בפנים. */}
@@ -230,16 +240,21 @@ const ProductCard = ({ product }) => {
 };
 
 const ProductCatalog = () => {
-  const { activeMainCustomerId, totals } = useCart();
+  const { activeMainCustomerId, totals, setPriceTier: rememberCartTier } = useCart();
   const [search, setSearch] = useState("");
   const [submitted, setSubmitted] = useState("");
   const [category, setCategory] = useState("");
   const [products, setProducts] = useState([]);
+  const [priceTier, setPriceTier] = useState("");
+  const [loadError, setLoadError] = useState("");
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  // מזהה הבקשה האחרונה: תשובה ישנה (למשל של הלקוח הקודם) לא דורסת את החדשה.
+  const requestSeq = useRef(0);
 
   const fetch = useCallback(
     async (q, cat) => {
+      const seq = ++requestSeq.current;
       setLoading(true);
       try {
         const res = await listProducts({
@@ -249,13 +264,26 @@ const ProductCatalog = () => {
           page: 1,
           limit: 60,
         });
+        if (seq !== requestSeq.current) return;
         setProducts(res?.data || []);
-      } catch {
+        setPriceTier(res?.priceTier || "");
+        if (res?.priceTier) rememberCartTier(activeMainCustomerId, res.priceTier);
+        setLoadError("");
+      } catch (err) {
+        if (seq !== requestSeq.current) return;
         setProducts([]);
+        setPriceTier("");
+        // 403 = הלקוח שייך למחירון שאינו פתוח לסוכן. מציגים את הסיבה במקום
+        // "לא נמצאו מוצרים", שהיה מטעה.
+        const msg = err?.response?.data?.message;
+        setLoadError(typeof msg === "object" ? msg.he || msg.en : msg || "");
       } finally {
-        setLoading(false);
+        if (seq === requestSeq.current) setLoading(false);
       }
     },
+    // rememberCartTier מוגדרת מחדש בכל רינדור של הקונטקסט; אם תיכנס לתלויות
+    // הקטלוג ייטען שוב ושוב.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [activeMainCustomerId]
   );
 
@@ -319,10 +347,19 @@ const ProductCatalog = () => {
             ))}
           </select>
         </form>
+        {priceTier && (
+          <p className="mt-2 text-xs text-gray-500">
+            מחירון: <span className="font-semibold text-gray-700">{PRICE_TIER_LABELS[priceTier]}</span>
+          </p>
+        )}
       </div>
 
       {loading ? (
         <Loader />
+      ) : loadError ? (
+        <div className="mt-4 rounded-xl bg-danger/10 text-danger-dark px-4 py-3 text-sm font-medium">
+          {loadError}
+        </div>
       ) : products.length === 0 ? (
         <Empty title="לא נמצאו מוצרים" />
       ) : (

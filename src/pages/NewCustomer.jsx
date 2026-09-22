@@ -4,12 +4,16 @@ import { FiArrowRight, FiCheckCircle, FiSend } from "react-icons/fi";
 import { createCustomer } from "@/api/customers";
 import { sendContract } from "@/api/contracts";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
+import PriceTierField from "@/components/customer/PriceTierField";
+import { agentTiersOf, defaultTierFor } from "@/utils/priceTiers";
 
 const NewCustomer = () => {
   const { switchCustomer } = useCart();
   const navigate = useNavigate();
+  const { agent } = useAuth();
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState(() => ({
     name: "",
     email: "",
     phone: "",
@@ -17,7 +21,8 @@ const NewCustomer = () => {
     customerType: "regular",
     contactFirstName: "",
     contactLastName: "",
-  });
+    agentPriceTier: defaultTierFor(agent),
+  }));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   // הלקוח שנוצר — מוצג מסך סיום עם כפתור לשליחת ההסכם.
@@ -35,7 +40,10 @@ const NewCustomer = () => {
     }
     setSubmitting(true);
     try {
-      const created = await createCustomer(form);
+      // סוכן עם מחירון יחיד לא בוחר — השרת משייך אותו בעצמו.
+      const payload = { ...form };
+      if (agentTiersOf(agent).length < 2) delete payload.agentPriceTier;
+      const created = await createCustomer(payload);
       switchCustomer(created._id);
       setCreatedCustomer(created);
     } catch (err) {
@@ -159,6 +167,7 @@ const NewCustomer = () => {
               <option value="institutional">מוסד</option>
             </select>
           </label>
+          <PriceTierField value={form.agentPriceTier} onChange={set("agentPriceTier")} />
           <label className="block">
             <span className="text-sm font-semibold text-gray-700">שם איש קשר</span>
             <input

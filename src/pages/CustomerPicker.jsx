@@ -7,10 +7,15 @@ import { useCart } from "@/context/CartContext";
 import Loader from "@/components/common/Loader";
 import Empty from "@/components/common/Empty";
 import EditCustomerModal from "@/components/customer/EditCustomerModal";
+import { useAuth } from "@/context/AuthContext";
+import { PRICE_TIER_LABELS, agentTiersOf, customerTierOf } from "@/utils/priceTiers";
 
 const CustomerPicker = () => {
   const navigate = useNavigate();
   const { switchCustomer, activeMainCustomerId } = useCart();
+  const { agent } = useAuth();
+  // תג הקבוצה מוצג רק לסוכן שחשוף ליותר ממחירון אחד — אחרת כל הלקוחות זהים.
+  const showTier = agentTiersOf(agent).length > 1;
 
   const [search, setSearch] = useState("");
   const [submitted, setSubmitted] = useState("");
@@ -197,6 +202,17 @@ const CustomerPicker = () => {
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-gray-800 truncate">{c.name}</h3>
                       <div className="flex items-center gap-2 text-xs text-gray-500 flex-wrap mt-1">
+                        {showTier && (
+                          <span
+                            className={`px-2 py-0.5 rounded-full font-semibold ${
+                              customerTierOf(c) === "institutional"
+                                ? "bg-indigo-100 text-indigo-800"
+                                : "bg-gray-100 text-gray-700"
+                            }`}
+                          >
+                            {PRICE_TIER_LABELS[customerTierOf(c)]}
+                          </span>
+                        )}
                         {c.phone && <span>{c.phone}</span>}
                         {c.email && <span>· {c.email}</span>}
                       </div>

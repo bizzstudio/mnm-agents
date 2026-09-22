@@ -7,16 +7,26 @@ import Loader from "@/components/common/Loader";
 import Empty from "@/components/common/Empty";
 import ApprovalBadge from "@/components/quote/ApprovalBadge";
 import { approvalOf, quoteNumberOf } from "@/utils/quoteStatus";
+import { PRICE_APPROVAL, isPriceBlocked, priceApprovalOf } from "@/utils/priceTiers";
 
 // סינון לפי מה שהלקוח עשה עם ההצעה. "בבדיקה" מאגד sent+viewed — מבחינת
 // הסוכן שני המצבים זהים: ההצעה אצל הלקוח וממתינה לתשובה.
+// שני הסינונים האחרונים הם לפי אישור המחיר הפנימי ולא לפי הלקוח.
 const FILTERS = [
   { key: "", label: "הכל" },
   { key: "sent,viewed", label: "בבדיקה" },
   { key: "approved", label: "אושרו" },
   { key: "rejected", label: "לא אושרו" },
   { key: "draft", label: "טרם נשלחו" },
+  { key: "price:pending", label: "ממתינות לאישור המשרד" },
+  { key: "price:rejected", label: "נדחו במשרד" },
 ];
+
+const filterParams = (key) => {
+  if (!key) return {};
+  if (key.startsWith("price:")) return { priceApproval: key.slice("price:".length) };
+  return { approval: key };
+};
 
 const MyOrders = () => {
   const [data, setData] = useState({ data: [], total: 0 });
@@ -25,7 +35,7 @@ const MyOrders = () => {
 
   useEffect(() => {
     setLoading(true);
-    listOrders({ type: "quote", limit: 50, ...(filter ? { approval: filter } : {}) })
+    listOrders({ type: "quote", limit: 50, ...filterParams(filter) })
       .then(setData)
       .catch(() => setData({ data: [], total: 0 }))
       .finally(() => setLoading(false));
@@ -75,7 +85,15 @@ const MyOrders = () => {
                 </h3>
                 <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-gray-500">
                   <span>{dayjs(o.createdAt).format("DD/MM/YYYY HH:mm")}</span>
-                  <ApprovalBadge approval={approvalOf(o)} />
+                  {isPriceBlocked(o) ? (
+                    <span
+                      className={`px-2 py-0.5 rounded-full font-bold ${PRICE_APPROVAL[priceApprovalOf(o)].badge}`}
+                    >
+                      {PRICE_APPROVAL[priceApprovalOf(o)].label}
+                    </span>
+                  ) : (
+                    <ApprovalBadge approval={approvalOf(o)} />
+                  )}
                   <span>#{quoteNumberOf(o)}</span>
                 </div>
               </div>

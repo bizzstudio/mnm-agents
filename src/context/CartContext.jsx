@@ -4,7 +4,7 @@
 //
 // המבנה: cart = {
 //   mainCustomerId, items: [{ productId, title, image, quantity, unitPrice, allowedMin, allowedMax }],
-//   orderDiscountPercent, note
+//   orderDiscountPercent, note, priceApprovalNote, priceTier
 // }
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
@@ -140,19 +140,33 @@ export const CartProvider = ({ children }) => {
     });
   };
 
-  // עדכון המחיר ליחידה של שורה — חתוך לטווח [allowedMin, allowedMax]
+  // עדכון המחיר ליחידה של שורה. המחיר *אינו* נחתך לטווח [allowedMin, allowedMax]:
+  // מחיר מחוץ לטווח מעביר את ההצעה לאישור מחיר בשרת. רק מחיר שלילי נחסם;
+  // מחיר 0 נשמר זמנית (שדה שהסוכן מחק כדי להקליד מחדש) ונחסם בשליחה.
   const updateLinePrice = (productId, price) => {
     setCart((c) => ({
       ...c,
       items: c.items.map((i) => {
         if (i.productId !== productId) return i;
         const v = Number(price);
-        if (!Number.isFinite(v)) return i;
-        const clamped = Math.max(i.allowedMin, Math.min(i.allowedMax, v));
-        return { ...i, unitPrice: Number(clamped.toFixed(2)) };
+        if (!Number.isFinite(v) || v < 0) return i;
+        return { ...i, unitPrice: Number(v.toFixed(2)) };
       }),
     }));
   };
+
+  const setPriceApprovalNote = (priceApprovalNote) =>
+    setCart((c) => ({ ...c, priceApprovalNote }));
+
+  // מחירון הלקוח כפי שהשרת החזיר בקטלוג — לתצוגה בסל בלבד (הצעה מוסדית
+  // עוברת אישור). ההחלטה עצמה נעשית בשרת. נרשם רק אם הסל הפעיל עדיין של
+  // אותו לקוח: תשובה שחוזרת אחרי החלפת לקוח לא תסמן את הסל הלא נכון.
+  const setPriceTier = (mainCustomerId, priceTier) =>
+    setCart((c) =>
+      String(c.mainCustomerId) !== String(mainCustomerId) || c.priceTier === priceTier
+        ? c
+        : { ...c, priceTier }
+    );
 
   // נשמר לצורך תאימות עם הקוד הקיים — לא בשימוש במודל החדש
   const setOrderDiscount = (percent) => {
@@ -164,6 +178,16 @@ export const CartProvider = ({ children }) => {
 
   const clear = () => {
     setCart(emptyCart(activeMainCustomerId));
+  };
+
+  // מוחק את הטיוטה של לקוח מסוים — למשל אחרי שקבוצת המחירון שלו השתנתה,
+  // כי הטווחים ששמורים בשורות חושבו לפי המחירון הקודם.
+  const resetCustomerCart = (mainCustomerId) => {
+    if (!mainCustomerId) return;
+    sessionStorage.removeItem(cartKey(agentId, mainCustomerId));
+    if (String(activeMainCustomerId) === String(mainCustomerId)) {
+      setCart(emptyCart(mainCustomerId));
+    }
   };
 
   const totals = useMemo(() => {
@@ -191,7 +215,10 @@ export const CartProvider = ({ children }) => {
         updateLinePrice,
         setOrderDiscount,
         setNote,
+        setPriceApprovalNote,
+        setPriceTier,
         clear,
+        resetCustomerCart,
         totals,
       }}
     >

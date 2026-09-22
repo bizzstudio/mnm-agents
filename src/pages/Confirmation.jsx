@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { FiCheckCircle, FiHome, FiList } from "react-icons/fi";
+import { FiCheckCircle, FiHome, FiList, FiClock } from "react-icons/fi";
 import { getOrder } from "@/api/orders";
 import Loader from "@/components/common/Loader";
 import ApprovalBadge from "@/components/quote/ApprovalBadge";
 import QuoteActions from "@/components/quote/QuoteActions";
 import { approvalOf, quoteNumberOf } from "@/utils/quoteStatus";
+import PriceApprovalBanner from "@/components/quote/PriceApprovalBanner";
+import { isPriceBlocked, priceApprovalOf } from "@/utils/priceTiers";
 
 const Confirmation = () => {
   const { id } = useParams();
@@ -29,14 +31,25 @@ const Confirmation = () => {
     );
 
   const quoteNo = quoteNumberOf(order);
+  const pending = priceApprovalOf(order) === "pending";
 
   return (
     <div className="px-4 sm:px-6 py-8 max-w-lg mx-auto text-center">
-      <div className="w-20 h-20 mx-auto rounded-full bg-success/10 text-success flex items-center justify-center mb-4">
-        <FiCheckCircle size={48} />
+      <div
+        className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-4 ${
+          pending ? "bg-amber-100 text-amber-600" : "bg-success/10 text-success"
+        }`}
+      >
+        {pending ? <FiClock size={44} /> : <FiCheckCircle size={48} />}
       </div>
-      <h1 className="text-2xl font-bold text-gray-800 mb-2">הצעת המחיר נשמרה!</h1>
-      <p className="text-gray-500 mb-1">אפשר להדפיס אותה, לשמור כקובץ או לשלוח ללקוח לאישור</p>
+      <h1 className="text-2xl font-bold text-gray-800 mb-2">
+        {pending ? "ההצעה נשמרה והועברה לאישור" : "הצעת המחיר נשמרה!"}
+      </h1>
+      <p className="text-gray-500 mb-1">
+        {pending
+          ? "תקבל מייל כשההצעה תאושר, ואז תוכל לשלוח אותה ללקוח"
+          : "אפשר להדפיס אותה, לשמור כקובץ או לשלוח ללקוח לאישור"}
+      </p>
       <p className="text-sm text-gray-400 mb-6">מספר הצעה: {quoteNo}</p>
 
       <div className="card p-4 text-start mb-4">
@@ -54,12 +67,16 @@ const Confirmation = () => {
         </div>
       </div>
 
-      <div className="mb-4">
-        <QuoteActions
-          order={order}
-          onQuoteChange={(quote) => setOrder((prev) => (prev ? { ...prev, quote } : prev))}
-        />
-      </div>
+      <PriceApprovalBanner order={order} className="mb-4" />
+
+      {!isPriceBlocked(order) && (
+        <div className="mb-4">
+          <QuoteActions
+            order={order}
+            onQuoteChange={(quote) => setOrder((prev) => (prev ? { ...prev, quote } : prev))}
+          />
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <Link to={`/orders/${id}`} className="btn-secondary">

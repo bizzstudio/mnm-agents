@@ -16,6 +16,16 @@ import PriceScale from "@/components/quote/PriceScale";
 import QuoteActions from "@/components/quote/QuoteActions";
 import { approvalOf, hasResponded, vatBreakdownForLines, quoteNumberOf } from "@/utils/quoteStatus";
 import { DEFAULT_PRODUCT_IMAGE, getPrimaryProductImageUrl } from "@/utils/productImage";
+import PriceApprovalBanner from "@/components/quote/PriceApprovalBanner";
+import {
+  PRICE_APPROVAL,
+  PRICE_TIER_LABELS,
+  OUT_OF_RANGE_LABELS,
+  LINE_DECISION_LABELS,
+  OUT_OF_RANGE_SHORT,
+  isPriceBlocked,
+  priceApprovalOf,
+} from "@/utils/priceTiers";
 
 const errText = (err) => {
   const msg = err?.response?.data?.message;
@@ -29,6 +39,10 @@ const EVENT_LABELS = {
   approved: "אושרה",
   rejected: "לא אושרה",
   draft: "הוחזרה לטיוטה",
+  pricePending: "הועברה לאישור המשרד",
+  priceApproved: "אושרה במשרד",
+  priceRejected: "לא אושרה במשרד",
+  converted: "הומרה להזמנה",
 };
 
 const OrderDetail = () => {
@@ -94,6 +108,8 @@ const OrderDetail = () => {
   // order.total הוא לפני מע"מ; הפירוט תצוגתי בלבד.
   const vat = vatBreakdownForLines(order.cart, order.total, agent?.vatPercent);
   const events = [...(q.events || [])].reverse();
+  const priceBlocked = isPriceBlocked(order);
+  const priceStatus = priceApprovalOf(order);
 
   return (
     <div className="px-4 sm:px-6 py-4 max-w-3xl mx-auto pb-10">
@@ -107,83 +123,95 @@ const OrderDetail = () => {
         <h1 className="text-xl font-bold text-gray-800">
           הצעת מחיר #{quoteNumberOf(order)}
         </h1>
-        <ApprovalBadge approval={approval} className="ms-auto" />
+        {priceBlocked ? (
+          <span
+            className={`ms-auto px-2.5 py-0.5 rounded-full text-xs font-bold ${PRICE_APPROVAL[priceStatus].badge}`}
+          >
+            {PRICE_APPROVAL[priceStatus].label}
+          </span>
+        ) : (
+          <ApprovalBadge approval={approval} className="ms-auto" />
+        )}
       </div>
 
-      {/* פעולות — הדפסה, קובץ, שליחה ללקוח */}
-      <div className="card p-3 mb-3">
-        <QuoteActions order={order} onQuoteChange={applyQuote} />
+      <PriceApprovalBanner order={order} className="mb-3" />
 
-        {/* תשובת הלקוח — סימון ידני למי שענה בטלפון */}
-        <div className="mt-3 pt-3 border-t border-gray-100">
-          <p className="text-xs text-gray-500 mb-2">
-            {responded
-              ? `תשובת הלקוח נרשמה ${q.respondedAt ? dayjs(q.respondedAt).format("DD/MM/YYYY HH:mm") : ""}${q.respondedBy?.startsWith("agent:") ? " (סומן ע\"י הסוכן)" : ""}`
-              : "קיבלת תשובה בטלפון? סמן כאן:"}
-          </p>
-          {responded ? (
-            <button
-              onClick={() => handleApproval("reset")}
-              disabled={!!busy}
-              className="btn-secondary text-sm w-full"
-            >
-              <FiRotateCcw /> החזר ל"ממתין לאישור"
-            </button>
-          ) : rejectOpen ? (
-            <div className="space-y-2">
-              <textarea
-                rows={2}
-                value={rejectNote}
-                onChange={(e) => setRejectNote(e.target.value)}
-                placeholder="סיבת אי-האישור (אופציונלי) — לדוגמה: המחיר על שמן קנולה גבוה"
-                className="field min-h-[70px] text-sm"
-              />
+      {/* פעולות — הדפסה, קובץ, שליחה ללקוח. חסומות עד שהמחירים יאושרו. */}
+      {!priceBlocked && (
+        <div className="card p-3 mb-3">
+          <QuoteActions order={order} onQuoteChange={applyQuote} />
+
+          {/* תשובת הלקוח — סימון ידני למי שענה בטלפון */}
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <p className="text-xs text-gray-500 mb-2">
+              {responded
+                ? `תשובת הלקוח נרשמה ${q.respondedAt ? dayjs(q.respondedAt).format("DD/MM/YYYY HH:mm") : ""}${q.respondedBy?.startsWith("agent:") ? " (סומן ע\"י הסוכן)" : ""}`
+                : "קיבלת תשובה בטלפון? סמן כאן:"}
+            </p>
+            {responded ? (
+              <button
+                onClick={() => handleApproval("reset")}
+                disabled={!!busy}
+                className="btn-secondary text-sm w-full"
+              >
+                <FiRotateCcw /> החזר ל"ממתין לאישור"
+              </button>
+            ) : rejectOpen ? (
+              <div className="space-y-2">
+                <textarea
+                  rows={2}
+                  value={rejectNote}
+                  onChange={(e) => setRejectNote(e.target.value)}
+                  placeholder="סיבת אי-האישור (אופציונלי) — לדוגמה: המחיר על שמן קנולה גבוה"
+                  className="field min-h-[70px] text-sm"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => handleApproval("reject", rejectNote)}
+                    disabled={!!busy}
+                    className="btn text-sm bg-red-600 text-white hover:bg-red-700"
+                  >
+                    <FiXCircle /> {busy === "reject" ? "שומר..." : "סמן כלא אושר"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setRejectOpen(false);
+                      setRejectNote("");
+                    }}
+                    disabled={!!busy}
+                    className="btn-secondary text-sm"
+                  >
+                    ביטול
+                  </button>
+                </div>
+              </div>
+            ) : (
               <div className="grid grid-cols-2 gap-2">
                 <button
-                  onClick={() => handleApproval("reject", rejectNote)}
+                  onClick={() => handleApproval("approve")}
+                  disabled={!!busy}
+                  className="btn text-sm bg-green-600 text-white hover:bg-green-700"
+                >
+                  <FiCheckCircle /> {busy === "approve" ? "שומר..." : "הלקוח אישר"}
+                </button>
+                <button
+                  onClick={() => setRejectOpen(true)}
                   disabled={!!busy}
                   className="btn text-sm bg-red-600 text-white hover:bg-red-700"
                 >
-                  <FiXCircle /> {busy === "reject" ? "שומר..." : "סמן כלא אושר"}
-                </button>
-                <button
-                  onClick={() => {
-                    setRejectOpen(false);
-                    setRejectNote("");
-                  }}
-                  disabled={!!busy}
-                  className="btn-secondary text-sm"
-                >
-                  ביטול
+                  <FiXCircle /> לא אושר
                 </button>
               </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => handleApproval("approve")}
-                disabled={!!busy}
-                className="btn text-sm bg-green-600 text-white hover:bg-green-700"
-              >
-                <FiCheckCircle /> {busy === "approve" ? "שומר..." : "הלקוח אישר"}
-              </button>
-              <button
-                onClick={() => setRejectOpen(true)}
-                disabled={!!busy}
-                className="btn text-sm bg-red-600 text-white hover:bg-red-700"
-              >
-                <FiXCircle /> לא אושר
-              </button>
+            )}
+          </div>
+
+          {error && (
+            <div className="mt-3 rounded-xl bg-danger/10 text-danger-dark px-4 py-2.5 text-sm">
+              {error}
             </div>
           )}
         </div>
-
-        {error && (
-          <div className="mt-3 rounded-xl bg-danger/10 text-danger-dark px-4 py-2.5 text-sm">
-            {error}
-          </div>
-        )}
-      </div>
+      )}
 
       <div className="card p-4 mb-3">
         <div className="grid grid-cols-2 gap-3 text-sm">
@@ -212,6 +240,12 @@ const OrderDetail = () => {
               {order.status?.heName || order.status?.name || "—"}
             </span>
           </div>
+          {order.agentPriceTier && (
+            <div>
+              <p className="text-gray-500 text-xs">מחירון</p>
+              <p className="font-semibold">{PRICE_TIER_LABELS[order.agentPriceTier] || "—"}</p>
+            </div>
+          )}
           {q.sentToEmail && (
             <div>
               <p className="text-gray-500 text-xs">נשלחה אל</p>
@@ -267,6 +301,22 @@ const OrderDetail = () => {
                 <p className="text-xs text-gray-500">
                   {item.quantity} × ₪{item.price?.toLocaleString() || 0}
                 </p>
+                {item.priceOutOfRange && (
+                  <p
+                    className={`text-[11px] font-semibold ${
+                      item.priceDecision === "approved"
+                        ? "text-green-700"
+                        : item.priceDecision === "rejected"
+                          ? "text-red-700"
+                          : "text-amber-700"
+                    }`}
+                  >
+                    {LINE_DECISION_LABELS[item.priceDecision] ||
+                      (priceStatus === "pending"
+                        ? OUT_OF_RANGE_LABELS[item.priceOutOfRange]
+                        : OUT_OF_RANGE_SHORT[item.priceOutOfRange])}
+                  </p>
+                )}
               </div>
               <p className="font-bold">
                 ₪{((item.price || 0) * (item.quantity || 0)).toLocaleString()}

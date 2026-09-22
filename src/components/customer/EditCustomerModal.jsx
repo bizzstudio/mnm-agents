@@ -2,8 +2,15 @@ import { useEffect, useState } from "react";
 import { FiX } from "react-icons/fi";
 import { getCustomer, updateCustomer } from "@/api/customers";
 import Loader from "@/components/common/Loader";
+import PriceTierField from "@/components/customer/PriceTierField";
+import { useAuth } from "@/context/AuthContext";
+import { useCart } from "@/context/CartContext";
+import { agentTiersOf, customerTierOf } from "@/utils/priceTiers";
 
 const EditCustomerModal = ({ customerId, onClose, onSaved }) => {
+  const { agent } = useAuth();
+  const { resetCustomerCart } = useCart();
+  const [originalTier, setOriginalTier] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -16,6 +23,7 @@ const EditCustomerModal = ({ customerId, onClose, onSaved }) => {
     customerType: "regular",
     contactFirstName: "",
     contactLastName: "",
+    agentPriceTier: "small",
   });
 
   useEffect(() => {
@@ -35,7 +43,9 @@ const EditCustomerModal = ({ customerId, onClose, onSaved }) => {
           customerType: c.customerType || "regular",
           contactFirstName: root.name || "",
           contactLastName: root.lastName || "",
+          agentPriceTier: customerTierOf(c),
         });
+        setOriginalTier(customerTierOf(c));
       } catch (err) {
         if (!alive) return;
         const msg = err?.response?.data?.message;
@@ -61,7 +71,16 @@ const EditCustomerModal = ({ customerId, onClose, onSaved }) => {
     }
     setSubmitting(true);
     try {
-      const updated = await updateCustomer(customerId, form);
+      // הקבוצה נשלחת רק כשהסוכן יכול לבחור בה. אחרת השרת היה פוסל לקוח
+      // ישן שנשאר במחירון שהוסר מהסוכן, רק בגלל שהטופס שלח אותו חזרה.
+      const payload = { ...form };
+      if (agentTiersOf(agent).length < 2) delete payload.agentPriceTier;
+      const updated = await updateCustomer(customerId, payload);
+      // הטווחים בסל של הלקוח חושבו לפי המחירון הקודם — הסל מתרוקן כדי שלא
+      // יוצגו לסוכן טווחים שאינם תואמים את מה שהשרת יבדוק.
+      if (payload.agentPriceTier && payload.agentPriceTier !== originalTier) {
+        resetCustomerCart(customerId);
+      }
       onSaved?.(updated);
     } catch (err) {
       const msg = err?.response?.data?.message;
@@ -142,6 +161,7 @@ const EditCustomerModal = ({ customerId, onClose, onSaved }) => {
                   <option value="institutional">מוסד</option>
                 </select>
               </label>
+              <PriceTierField value={form.agentPriceTier} onChange={set("agentPriceTier")} />
               <label className="block">
                 <span className="text-sm font-semibold text-gray-700">שם איש קשר</span>
                 <input

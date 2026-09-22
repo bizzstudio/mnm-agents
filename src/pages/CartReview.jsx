@@ -1,14 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { FiTrash2, FiArrowRight, FiFileText, FiMinus, FiPlus } from "react-icons/fi";
+import { FiTrash2, FiArrowRight, FiFileText, FiMinus, FiPlus, FiAlertTriangle } from "react-icons/fi";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { createOrder } from "@/api/orders";
+import { getCustomer } from "@/api/customers";
 import QuantityInput from "@/components/common/QuantityInput";
 import Empty from "@/components/common/Empty";
 import PriceScale from "@/components/quote/PriceScale";
 import { DEFAULT_PRODUCT_IMAGE, getPrimaryProductImageUrl } from "@/utils/productImage";
 import { vatBreakdownForLines } from "@/utils/quoteStatus";
+import { OUT_OF_RANGE_LABELS, outOfRangeOf } from "@/utils/priceTiers";
 
 const PRICE_STEP = 0.1;
 const round2 = (n) => Math.round(Number(n) * 100) / 100;
@@ -24,14 +26,40 @@ const CartReview = () => {
     updateLinePrice,
     removeItem,
     setNote,
+    setPriceApprovalNote,
+    setPriceTier,
     clear,
   } = useCart();
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  // סל ששמור מלפני שהקטלוג רשם בו את המחירון (למשל טיוטה מלפני העדכון) —
+  // שולפים את קבוצת הלקוח כדי שהודעת האישור המוסדי תוצג נכון.
+  useEffect(() => {
+    if (!activeMainCustomerId || cart.priceTier) return;
+    let alive = true;
+    getCustomer(activeMainCustomerId)
+      .then((c) => {
+        if (alive) setPriceTier(activeMainCustomerId, c?.agentPriceTier || "small");
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMainCustomerId, cart.priceTier]);
+
   // סכומי העגלה הם לפני מע"מ; מוצג פירוט כדי שהסוכן יראה את הסכום הסופי.
   const vat = vatBreakdownForLines(cart.items, totals.total, agent?.vatPercent);
+
+  // שורות שהמחיר שלהן מחוץ לטווח המחירון — ההצעה תעבור לאישור מחיר.
+  const outOfRangeCount = cart.items.filter((i) =>
+    outOfRangeOf(i.unitPrice, i.allowedMin, i.allowedMax)
+  ).length;
+  // הצעה ללקוח מוסדי עוברת אישור תמיד, גם כשכל המחירים בטווח.
+  const isInstitutional = cart.priceTier === "institutional";
+  const needsApproval = outOfRangeCount > 0 || isInstitutional;
 
   if (!activeMainCustomerId) {
     return (
@@ -50,6 +78,10 @@ const CartReview = () => {
       setError("הסל ריק");
       return;
     }
+    if (cart.items.some((i) => !(Number(i.unitPrice) > 0))) {
+      setError("יש שורה בלי מחיר. הזן מחיר גדול מ-0 לכל מוצר.");
+      return;
+    }
     setSubmitting(true);
     try {
       const payload = {
@@ -61,6 +93,7 @@ const CartReview = () => {
         })),
         orderType: "quote",
         note: cart.note || undefined,
+        priceApprovalNote: needsApproval ? cart.priceApprovalNote || undefined : undefined,
       };
       const res = await createOrder(payload);
       clear();
@@ -102,9 +135,13 @@ const CartReview = () => {
             const title = i.title?.he || i.title?.en || "—";
             const lineTotal = round2(i.unitPrice * i.quantity);
             const hasRange = i.allowedMin !== i.allowedMax;
+            const outOfRange = outOfRangeOf(i.unitPrice, i.allowedMin, i.allowedMax);
 
             return (
-              <div key={i.productId} className="card p-3">
+              <div
+                key={i.productId}
+                className={`card p-3 ${outOfRange ? "border-amber-300 bg-amber-50/40" : ""}`}
+              >
                 <div className="flex gap-3">
                   <div className="w-16 h-16 bg-gray-100 rounded-xl flex-shrink-0 overflow-hidden">
                     <img
@@ -123,9 +160,14 @@ const CartReview = () => {
                       <span className="text-brand-dark font-bold text-base">
                         ₪{i.unitPrice.toLocaleString()}
                       </span>
-                      {hasRange && (
+                      {(hasRange || outOfRange) && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-xs font-bold border border-amber-200">
-                          טווח: ₪{i.allowedMin} – ₪{i.allowedMax}
+                          {hasRange ? `טווח: ₪${i.allowedMin} – ₪${i.allowedMax}` : `מחיר: ₪${i.allowedMin}`}
+                        </span>
+                      )}
+                      {outOfRange && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500 text-white text-xs font-bold">
+                          <FiAlertTriangle size={12} /> {OUT_OF_RANGE_LABELS[outOfRange]}
                         </span>
                       )}
                     </div>
@@ -155,7 +197,10 @@ const CartReview = () => {
                         <button
                           type="button"
                           onClick={() =>
-                            updateLinePrice(i.productId, i.unitPrice - PRICE_STEP)
+                            updateLinePrice(
+                              i.productId,
+                              Math.max(PRICE_STEP, i.unitPrice - PRICE_STEP)
+                            )
                           }
                           aria-label="הפחת מחיר"
                           className="w-10 h-full flex items-center justify-center text-gray-600 hover:bg-gray-100"
@@ -166,8 +211,7 @@ const CartReview = () => {
                           type="number"
                           inputMode="decimal"
                           step={PRICE_STEP}
-                          min={i.allowedMin}
-                          max={i.allowedMax}
+                          min={0}
                           value={i.unitPrice}
                           onChange={(e) => updateLinePrice(i.productId, e.target.value)}
                           onClick={(e) => e.currentTarget.select()}
@@ -194,7 +238,7 @@ const CartReview = () => {
                 </div>
 
                 {/* איפה המחיר שנבחר יושב בטווח המותר — תצוגה פנימית לסוכן */}
-                {hasRange && (
+                {hasRange && !outOfRange && (
                   <div className="mt-3 pt-3 border-t border-dashed border-gray-200">
                     <PriceScale
                       price={i.unitPrice}
@@ -240,6 +284,32 @@ const CartReview = () => {
             </div>
           </div>
 
+          {needsApproval && (
+            <div className="card p-4 border-amber-300 bg-amber-50">
+              <p className="flex items-start gap-2 text-sm font-semibold text-amber-900">
+                <FiAlertTriangle className="mt-0.5 shrink-0" />
+                <span>
+                  {isInstitutional && "הצעה ללקוח מוסדי עוברת אישור של המשרד. "}
+                  {outOfRangeCount === 1 && "שורה אחת מחוץ לטווח המחירון ותאושר בנפרד. "}
+                  {outOfRangeCount > 1 &&
+                    `${outOfRangeCount} שורות מחוץ לטווח המחירון, וכל אחת תאושר בנפרד. `}
+                  תוכל לשלוח את ההצעה ללקוח רק אחרי שתאושר.
+                </span>
+              </p>
+              <label className="block mt-3">
+                <span className="text-sm text-amber-900">הסבר למאשר (מומלץ)</span>
+                <textarea
+                  value={cart.priceApprovalNote || ""}
+                  onChange={(e) => setPriceApprovalNote(e.target.value)}
+                  rows={2}
+                  maxLength={1000}
+                  className="field mt-1 min-h-[70px] bg-white"
+                  placeholder="לדוגמה: לקוח מוסדי גדול, מתחרה מציע 5% פחות"
+                />
+              </label>
+            </div>
+          )}
+
           {error && (
             <div className="rounded-xl bg-danger/10 text-danger-dark px-4 py-3 text-sm font-medium">
               {error}
@@ -250,9 +320,14 @@ const CartReview = () => {
             <button
               onClick={handleSubmit}
               disabled={submitting}
-              className="btn-primary w-full"
+              className={`btn-primary w-full ${needsApproval ? "bg-amber-600 hover:bg-amber-700" : ""}`}
             >
-              <FiFileText /> {submitting ? "שומר..." : "שמור כהצעת מחיר"}
+              <FiFileText />{" "}
+              {submitting
+                ? "שומר..."
+                : needsApproval
+                  ? "שמור והעבר לאישור"
+                  : "שמור כהצעת מחיר"}
             </button>
           </div>
         </div>

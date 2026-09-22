@@ -25,19 +25,29 @@ const PriceScale = ({ price, min, max, pricingMode }) => {
 
   const lo = round2(min);
   const hi = round2(max);
-  const chosen = Math.min(Math.max(round2(price), lo), hi);
+  const actual = round2(price);
+  const chosen = Math.min(Math.max(actual, lo), hi);
   const pct = ((chosen - lo) / (hi - lo)) * 100;
 
-  // איפה המחיר יושב בטווח — מנוסח כמו שסוכן חושב עליו.
+  // איפה המחיר יושב בטווח — מנוסח כמו שסוכן חושב עליו. מחיר שאושר מחוץ
+  // לטווח מוצמד לקצה הסקלה, והטקסט אומר זאת במפורש.
   const position =
-    pct <= 5 ? "מינימום" : pct >= 95 ? "מקסימום" : `${Math.round(pct)}% מהטווח`;
+    actual < lo
+      ? "מתחת למינימום"
+      : actual > hi
+        ? "מעל המקסימום"
+        : pct <= 5
+          ? "מינימום"
+          : pct >= 95
+            ? "מקסימום"
+            : `${Math.round(pct)}% מהטווח`;
 
   return (
     <div>
       <div className="flex items-center justify-between text-[11px] text-gray-500 mb-1">
         <span>מינ׳ ₪{lo}</span>
         <span className="font-bold text-gray-700">
-          נבחר ₪{chosen} · {position}
+          נבחר ₪{actual} · {position}
         </span>
         <span>מקס׳ ₪{hi}</span>
       </div>
