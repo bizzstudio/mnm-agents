@@ -6,7 +6,18 @@
 export const PRICE_TIER_LABELS = {
   small: "לקוחות קטנים",
   institutional: "לקוחות מוסדיים",
+  yeshiva: "ישיבות",
 };
+
+// תג לכל קבוצה ברשימת הלקוחות.
+export const PRICE_TIER_BADGE = {
+  small: "bg-gray-100 text-gray-700",
+  institutional: "bg-indigo-100 text-indigo-800",
+  yeshiva: "bg-emerald-100 text-emerald-800",
+};
+
+// כל הצעה במחירונים האלה עוברת אישור המשרד (מקביל לבקאנד).
+export const tierRequiresApproval = (tier) => tier === "institutional" || tier === "yeshiva";
 
 export const DEFAULT_PRICE_TIER = "small";
 

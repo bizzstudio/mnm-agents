@@ -8,7 +8,12 @@ import Loader from "@/components/common/Loader";
 import Empty from "@/components/common/Empty";
 import EditCustomerModal from "@/components/customer/EditCustomerModal";
 import { useAuth } from "@/context/AuthContext";
-import { PRICE_TIER_LABELS, agentTiersOf, customerTierOf } from "@/utils/priceTiers";
+import {
+  PRICE_TIER_LABELS,
+  PRICE_TIER_BADGE,
+  agentTiersOf,
+  customerTierOf,
+} from "@/utils/priceTiers";
 
 const CustomerPicker = () => {
   const navigate = useNavigate();
@@ -205,9 +210,7 @@ const CustomerPicker = () => {
                         {showTier && (
                           <span
                             className={`px-2 py-0.5 rounded-full font-semibold ${
-                              customerTierOf(c) === "institutional"
-                                ? "bg-indigo-100 text-indigo-800"
-                                : "bg-gray-100 text-gray-700"
+                              PRICE_TIER_BADGE[customerTierOf(c)]
                             }`}
                           >
                             {PRICE_TIER_LABELS[customerTierOf(c)]}

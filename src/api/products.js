@@ -14,7 +14,10 @@ export const getProduct = async (id, mainCustomerId) => {
   return data;
 };
 
-export const listCategories = async () => {
-  const { data } = await client.get("/agent/categories");
+// mainCustomerId — במחירון סגור (ישיבות) השרת מחזיר רק קטגוריות עם מוצרים ממנו.
+export const listCategories = async (mainCustomerId) => {
+  const { data } = await client.get("/agent/categories", {
+    params: mainCustomerId ? { mainCustomerId } : {},
+  });
   return data;
 };

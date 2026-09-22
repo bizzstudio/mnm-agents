@@ -10,7 +10,12 @@ import Empty from "@/components/common/Empty";
 import PriceScale from "@/components/quote/PriceScale";
 import { DEFAULT_PRODUCT_IMAGE, getPrimaryProductImageUrl } from "@/utils/productImage";
 import { vatBreakdownForLines } from "@/utils/quoteStatus";
-import { OUT_OF_RANGE_LABELS, outOfRangeOf } from "@/utils/priceTiers";
+import {
+  OUT_OF_RANGE_LABELS,
+  PRICE_TIER_LABELS,
+  outOfRangeOf,
+  tierRequiresApproval,
+} from "@/utils/priceTiers";
 
 const PRICE_STEP = 0.1;
 const round2 = (n) => Math.round(Number(n) * 100) / 100;
@@ -57,9 +62,9 @@ const CartReview = () => {
   const outOfRangeCount = cart.items.filter((i) =>
     outOfRangeOf(i.unitPrice, i.allowedMin, i.allowedMax)
   ).length;
-  // הצעה ללקוח מוסדי עוברת אישור תמיד, גם כשכל המחירים בטווח.
-  const isInstitutional = cart.priceTier === "institutional";
-  const needsApproval = outOfRangeCount > 0 || isInstitutional;
+  // הצעה במחירון מוסדי / ישיבות עוברת אישור תמיד, גם כשכל המחירים בטווח.
+  const tierNeedsApproval = tierRequiresApproval(cart.priceTier);
+  const needsApproval = outOfRangeCount > 0 || tierNeedsApproval;
 
   if (!activeMainCustomerId) {
     return (
@@ -289,7 +294,8 @@ const CartReview = () => {
               <p className="flex items-start gap-2 text-sm font-semibold text-amber-900">
                 <FiAlertTriangle className="mt-0.5 shrink-0" />
                 <span>
-                  {isInstitutional && "הצעה ללקוח מוסדי עוברת אישור של המשרד. "}
+                  {tierNeedsApproval &&
+                    `הצעה במחירון ${PRICE_TIER_LABELS[cart.priceTier]} עוברת אישור של המשרד. `}
                   {outOfRangeCount === 1 && "שורה אחת מחוץ לטווח המחירון ותאושר בנפרד. "}
                   {outOfRangeCount > 1 &&
                     `${outOfRangeCount} שורות מחוץ לטווח המחירון, וכל אחת תאושר בנפרד. `}

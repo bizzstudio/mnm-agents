@@ -292,10 +292,19 @@ const ProductCatalog = () => {
   }, [fetch, submitted, category]);
 
   useEffect(() => {
-    listCategories()
-      .then((c) => setCategories(Array.isArray(c) ? c : []))
-      .catch(() => setCategories([]));
-  }, []);
+    let alive = true;
+    listCategories(activeMainCustomerId || undefined)
+      .then((c) => alive && setCategories(Array.isArray(c) ? c : []))
+      .catch(() => alive && setCategories([]));
+    return () => {
+      alive = false;
+    };
+  }, [activeMainCustomerId]);
+
+  // קטגוריה שנבחרה ללקוח אחד עלולה לא להתקיים במחירון של הלקוח הבא (ישיבות).
+  useEffect(() => {
+    setCategory("");
+  }, [activeMainCustomerId]);
 
   if (!activeMainCustomerId) {
     return (

@@ -73,8 +73,11 @@ const EditCustomerModal = ({ customerId, onClose, onSaved }) => {
     try {
       // הקבוצה נשלחת רק כשהסוכן יכול לבחור בה. אחרת השרת היה פוסל לקוח
       // ישן שנשאר במחירון שהוסר מהסוכן, רק בגלל שהטופס שלח אותו חזרה.
+      // הקבוצה נשלחת רק כשהסוכן שינה אותה — כך שמירת פרטים אחרים לא נוגעת בה.
       const payload = { ...form };
-      if (agentTiersOf(agent).length < 2) delete payload.agentPriceTier;
+      if (agentTiersOf(agent).length < 2 || form.agentPriceTier === originalTier) {
+        delete payload.agentPriceTier;
+      }
       const updated = await updateCustomer(customerId, payload);
       // הטווחים בסל של הלקוח חושבו לפי המחירון הקודם — הסל מתרוקן כדי שלא
       // יוצגו לסוכן טווחים שאינם תואמים את מה שהשרת יבדוק.
