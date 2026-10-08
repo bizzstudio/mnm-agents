@@ -62,7 +62,7 @@ const CartReview = () => {
   const outOfRangeCount = cart.items.filter((i) =>
     outOfRangeOf(i.unitPrice, i.allowedMin, i.allowedMax)
   ).length;
-  // הצעה במחירון מוסדי / ישיבות עוברת אישור תמיד, גם כשכל המחירים בטווח.
+  // הצעה במחירון סיטונאי / מיוחד עוברת אישור תמיד, גם כשכל המחירים בטווח.
   const tierNeedsApproval = tierRequiresApproval(cart.priceTier);
   const needsApproval = outOfRangeCount > 0 || tierNeedsApproval;
 
@@ -310,7 +310,7 @@ const CartReview = () => {
                   rows={2}
                   maxLength={1000}
                   className="field mt-1 min-h-[70px] bg-white"
-                  placeholder="לדוגמה: לקוח מוסדי גדול, מתחרה מציע 5% פחות"
+                  placeholder="לדוגמה: לקוח גדול, מתחרה מציע 5% פחות"
                 />
               </label>
             </div>

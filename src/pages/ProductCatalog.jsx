@@ -301,7 +301,7 @@ const ProductCatalog = () => {
     };
   }, [activeMainCustomerId]);
 
-  // קטגוריה שנבחרה ללקוח אחד עלולה לא להתקיים במחירון של הלקוח הבא (ישיבות).
+  // קטגוריה שנבחרה ללקוח אחד עלולה לא להתקיים במחירון של הלקוח הבא ("מיוחד").
   useEffect(() => {
     setCategory("");
   }, [activeMainCustomerId]);

@@ -2,11 +2,12 @@
 //
 // מחירוני הסוכנים ואישור המחיר הפנימי. מקביל ל-utils/agentPriceTiers
 // ול-services/agentPriceApprovalService בבקאנד (פרויקטים נפרדים, בלי קוד משותף).
+// המפתחות נשארו כפי שנוצרו; רק שמות התצוגה השתנו.
 
 export const PRICE_TIER_LABELS = {
-  small: "לקוחות קטנים",
-  institutional: "לקוחות מוסדיים",
-  yeshiva: "ישיבות",
+  small: "מוסדי",
+  institutional: "סיטונאי",
+  yeshiva: "מיוחד",
 };
 
 // תג לכל קבוצה ברשימת הלקוחות.
@@ -21,7 +22,7 @@ export const tierRequiresApproval = (tier) => tier === "institutional" || tier =
 
 export const DEFAULT_PRICE_TIER = "small";
 
-// סוכן בלי השדה (פרופיל שנשמר לפני העדכון) חשוף למחירון הקטנים בלבד.
+// סוכן בלי השדה (פרופיל שנשמר לפני העדכון) חשוף למחירון small ("מוסדי") בלבד.
 export const agentTiersOf = (agent) => {
   const list = Array.isArray(agent?.priceTiers)
     ? agent.priceTiers.filter((t) => PRICE_TIER_LABELS[t])
