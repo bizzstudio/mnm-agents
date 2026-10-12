@@ -7,6 +7,13 @@ export const createOrder = async (payload) => {
   return data;
 };
 
+// עריכה ושליחה חוזרת לאישור של הצעה שלא אושרה במשרד. אותו מספר הצעה.
+// payload: { cart:[{product, quantity, price}], note?, priceApprovalNote? }
+export const resubmitOrder = async (id, payload) => {
+  const { data } = await client.put(`/agent/orders/${id}`, payload);
+  return data;
+};
+
 export const listOrders = async (params = {}) => {
   const { data } = await client.get("/agent/orders", { params });
   return data;

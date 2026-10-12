@@ -240,7 +240,7 @@ const ProductCard = ({ product }) => {
 };
 
 const ProductCatalog = () => {
-  const { activeMainCustomerId, totals, setPriceTier: rememberCartTier } = useCart();
+  const { cart, activeMainCustomerId, totals, setPriceTier: rememberCartTier } = useCart();
   const [search, setSearch] = useState("");
   const [submitted, setSubmitted] = useState("");
   const [category, setCategory] = useState("");
@@ -359,6 +359,12 @@ const ProductCatalog = () => {
         {priceTier && (
           <p className="mt-2 text-xs text-gray-500">
             מחירון: <span className="font-semibold text-gray-700">{PRICE_TIER_LABELS[priceTier]}</span>
+          </p>
+        )}
+        {/* הסל הוא עריכה של הצעה קיימת — שלא ייראה כמו הצעה חדשה לאותו לקוח */}
+        {cart.editingOrderId && (
+          <p className="mt-1 text-xs font-semibold text-amber-700">
+            עריכת הצעת מחיר #{cart.editingQuoteNumber || ""} — השמירה תעדכן אותה ולא תפתח הצעה חדשה
           </p>
         )}
       </div>

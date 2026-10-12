@@ -17,8 +17,9 @@ export const PRICE_TIER_BADGE = {
   yeshiva: "bg-emerald-100 text-emerald-800",
 };
 
-// כל הצעה במחירונים האלה עוברת אישור המשרד (מקביל לבקאנד).
-export const tierRequiresApproval = (tier) => tier === "institutional" || tier === "yeshiva";
+// כל הצעה במחירון הזה עוברת אישור המשרד (מקביל לבקאנד). בשאר המחירונים רק
+// מחיר מחוץ לטווח מעביר את ההצעה לאישור.
+export const tierRequiresApproval = (tier) => tier === "yeshiva";
 
 export const DEFAULT_PRICE_TIER = "small";
 
@@ -80,7 +81,7 @@ export const PRICE_APPROVAL = {
   },
   rejected: {
     label: "ההצעה לא אושרה",
-    text: "אי אפשר לשלוח את ההצעה ללקוח. יש להוציא הצעה חדשה במחירים מתוקנים.",
+    text: "אי אפשר לשלוח את ההצעה ללקוח כמו שהיא. אפשר לערוך אותה ולשלוח שוב לאישור.",
     box: "bg-red-50 border-red-200 text-red-900",
     badge: "bg-red-100 text-red-800",
   },

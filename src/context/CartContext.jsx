@@ -4,8 +4,12 @@
 //
 // המבנה: cart = {
 //   mainCustomerId, items: [{ productId, title, image, quantity, unitPrice, allowedMin, allowedMax }],
-//   orderDiscountPercent, note, priceApprovalNote, priceTier
+//   orderDiscountPercent, note, priceApprovalNote, priceTier,
+//   editingOrderId?, editingQuoteNumber?, editSkipped?
 // }
+//
+// editingOrderId מסמן שהסל הוא עריכה של הצעה קיימת שלא אושרה במשרד: השמירה
+// מעדכנת את אותה הצעה ושולחת אותה שוב לאישור, במקום ליצור הצעה חדשה.
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useAuth } from "./AuthContext";
@@ -66,6 +70,23 @@ export const CartProvider = ({ children }) => {
     setActiveMainCustomerId(mainCustomerId);
     const raw = sessionStorage.getItem(cartKey(agentId, mainCustomerId));
     setCart(raw ? JSON.parse(raw) : emptyCart(mainCustomerId));
+  };
+
+  // כמה שורות יש בטיוטה השמורה של לקוח — כדי להזהיר לפני שעריכת הצעה דורסת אותה.
+  const draftItemCount = (mainCustomerId) => {
+    if (String(activeMainCustomerId) === String(mainCustomerId)) return cart.items.length;
+    try {
+      const raw = sessionStorage.getItem(cartKey(agentId, mainCustomerId));
+      return raw ? (JSON.parse(raw).items || []).length : 0;
+    } catch {
+      return 0;
+    }
+  };
+
+  // טוען הצעה קיימת לסל של הלקוח שלה לצורך עריכה. מחליף את הטיוטה של אותו לקוח.
+  const startQuoteEdit = ({ mainCustomerId, items, ...rest }) => {
+    setActiveMainCustomerId(mainCustomerId);
+    setCart({ ...emptyCart(mainCustomerId), ...rest, items });
   };
 
   // addItem(product, { price, quantity })
@@ -158,8 +179,8 @@ export const CartProvider = ({ children }) => {
   const setPriceApprovalNote = (priceApprovalNote) =>
     setCart((c) => ({ ...c, priceApprovalNote }));
 
-  // מחירון הלקוח כפי שהשרת החזיר בקטלוג — לתצוגה בסל בלבד (הצעה מוסדית
-  // עוברת אישור). ההחלטה עצמה נעשית בשרת. נרשם רק אם הסל הפעיל עדיין של
+  // מחירון הלקוח כפי שהשרת החזיר בקטלוג — לתצוגה בסל בלבד (הצעה במחירון
+  // המיוחד עוברת אישור). ההחלטה עצמה נעשית בשרת. נרשם רק אם הסל הפעיל עדיין של
   // אותו לקוח: תשובה שחוזרת אחרי החלפת לקוח לא תסמן את הסל הלא נכון.
   const setPriceTier = (mainCustomerId, priceTier) =>
     setCart((c) =>
@@ -209,6 +230,8 @@ export const CartProvider = ({ children }) => {
         cart,
         activeMainCustomerId,
         switchCustomer,
+        draftItemCount,
+        startQuoteEdit,
         addItem,
         removeItem,
         updateQuantity,

@@ -6,10 +6,13 @@ import {
   FiXCircle,
   FiRotateCcw,
   FiClock,
+  FiEdit2,
 } from "react-icons/fi";
 import dayjs from "dayjs";
 import { getOrder, setQuoteApproval } from "@/api/orders";
+import { getProduct } from "@/api/products";
 import { useAuth } from "@/context/AuthContext";
+import { useCart } from "@/context/CartContext";
 import Loader from "@/components/common/Loader";
 import ApprovalBadge from "@/components/quote/ApprovalBadge";
 import PriceScale from "@/components/quote/PriceScale";
@@ -42,11 +45,13 @@ const EVENT_LABELS = {
   pricePending: "הועברה לאישור המשרד",
   priceApproved: "אושרה במשרד",
   priceRejected: "לא אושרה במשרד",
+  priceFixed: "תוקנה ע\"י הסוכן",
   converted: "הומרה להזמנה",
 };
 
 const OrderDetail = () => {
   const { agent } = useAuth();
+  const { draftItemCount, startQuoteEdit } = useCart();
   const { id } = useParams();
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
@@ -93,6 +98,73 @@ const OrderDetail = () => {
   const applyQuote = (quote) =>
     setOrder((prev) => (prev ? { ...prev, quote } : prev));
 
+  // עריכת הצעה שלא אושרה במשרד: השורות נטענות לסל של הלקוח, והשמירה משם
+  // מעדכנת את אותה הצעה ושולחת אותה שוב לאישור. הטווחים נשלפים מחדש מהקטלוג,
+  // כי הטווח ששמור בהצעה נכון ליום שבו היא נוצרה.
+  const handleEdit = () =>
+    runAction("edit", async () => {
+      const mainCustomerId = order.mainCustomer?._id || order.mainCustomer;
+      if (
+        draftItemCount(mainCustomerId) > 0 &&
+        !window.confirm("יש ללקוח הזה סל פתוח עם מוצרים. עריכת ההצעה תחליף אותו. להמשיך?")
+      ) {
+        return;
+      }
+
+      const loaded = await Promise.all(
+        (order.cart || []).map(async (line) => {
+          try {
+            return { line, product: await getProduct(line.product, mainCustomerId) };
+          } catch (err) {
+            // מוצר שירד מהקטלוג מדולג. כל שגיאה אחרת (רשת, הרשאה) עוצרת את
+            // העריכה — אחרת ההצעה הייתה נטענת חסרה בלי שהסוכן יודע למה.
+            if (err?.response?.status === 404) return { line, product: null };
+            throw err;
+          }
+        })
+      );
+
+      const items = [];
+      let skipped = 0;
+      for (const { line, product } of loaded) {
+        const pricing = product?.pricing;
+        if (!product || !pricing || pricing.unavailable) {
+          skipped += 1;
+          continue;
+        }
+        const min = Number(pricing.min);
+        const max = Number(pricing.max);
+        items.push({
+          productId: String(product._id),
+          title: product.title || line.title || { he: "", en: "" },
+          image: product.image ?? line.image,
+          quantity: Number(line.quantity) || 1,
+          // מוצר במחיר קבוע (בלי טווח) אין לסוכן איך לשנות, ולכן הוא חוזר למחיר העדכני.
+          unitPrice: min !== max ? Number(line.price) : min,
+          allowedMin: min,
+          allowedMax: max,
+          pricingMode: pricing.mode || "list",
+          isVatFree: product.isVatFree === true,
+        });
+      }
+
+      if (items.length === 0) {
+        setError("אף אחד מהמוצרים בהצעה כבר לא זמין בקטלוג. יש לפתוח הצעה חדשה.");
+        return;
+      }
+
+      startQuoteEdit({
+        mainCustomerId: String(mainCustomerId),
+        items,
+        note: order.customer_note || "",
+        priceApprovalNote: order.priceApproval?.agentNote || "",
+        editingOrderId: order._id,
+        editingQuoteNumber: quoteNumberOf(order),
+        editSkipped: skipped,
+      });
+      navigate("/cart");
+    });
+
   if (loading) return <Loader />;
   if (!order)
     return (
@@ -135,6 +207,24 @@ const OrderDetail = () => {
       </div>
 
       <PriceApprovalBanner order={order} className="mb-3" />
+
+      {/* הצעה שלא אושרה במשרד — הסוכן מתקן ושולח שוב, בלי לפתוח הצעה חדשה */}
+      {priceStatus === "rejected" && order.status?.name === "Quote" && (
+        <div className="card p-3 mb-3">
+          <button
+            onClick={handleEdit}
+            disabled={!!busy}
+            className="btn-primary text-sm w-full"
+          >
+            <FiEdit2 /> {busy === "edit" ? "טוען..." : "עריכה ושליחה חוזרת לאישור"}
+          </button>
+          {error && (
+            <div className="mt-3 rounded-xl bg-danger/10 text-danger-dark px-4 py-2.5 text-sm">
+              {error}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* פעולות — הדפסה, קובץ, שליחה ללקוח. חסומות עד שהמחירים יאושרו. */}
       {!priceBlocked && (

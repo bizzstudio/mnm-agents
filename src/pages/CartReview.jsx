@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { FiTrash2, FiArrowRight, FiFileText, FiMinus, FiPlus, FiAlertTriangle } from "react-icons/fi";
+import { FiTrash2, FiArrowRight, FiFileText, FiMinus, FiPlus, FiAlertTriangle, FiEdit2 } from "react-icons/fi";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
-import { createOrder } from "@/api/orders";
+import { createOrder, resubmitOrder } from "@/api/orders";
 import { getCustomer } from "@/api/customers";
 import QuantityInput from "@/components/common/QuantityInput";
 import Empty from "@/components/common/Empty";
@@ -62,9 +62,11 @@ const CartReview = () => {
   const outOfRangeCount = cart.items.filter((i) =>
     outOfRangeOf(i.unitPrice, i.allowedMin, i.allowedMax)
   ).length;
-  // הצעה במחירון סיטונאי / מיוחד עוברת אישור תמיד, גם כשכל המחירים בטווח.
+  // הצעה במחירון המיוחד עוברת אישור תמיד, גם כשכל המחירים בטווח.
   const tierNeedsApproval = tierRequiresApproval(cart.priceTier);
   const needsApproval = outOfRangeCount > 0 || tierNeedsApproval;
+  // הסל הוא עריכה של הצעה קיימת שלא אושרה במשרד (ראה OrderDetail.handleEdit).
+  const editingOrderId = cart.editingOrderId || null;
 
   if (!activeMainCustomerId) {
     return (
@@ -90,17 +92,18 @@ const CartReview = () => {
     setSubmitting(true);
     try {
       const payload = {
-        mainCustomerId: activeMainCustomerId,
+        ...(editingOrderId ? {} : { mainCustomerId: activeMainCustomerId, orderType: "quote" }),
         cart: cart.items.map((i) => ({
           product: i.productId,
           quantity: i.quantity,
           price: i.unitPrice,
         })),
-        orderType: "quote",
         note: cart.note || undefined,
         priceApprovalNote: needsApproval ? cart.priceApprovalNote || undefined : undefined,
       };
-      const res = await createOrder(payload);
+      const res = editingOrderId
+        ? await resubmitOrder(editingOrderId, payload)
+        : await createOrder(payload);
       clear();
       navigate(`/confirmation/${res._id}`);
     } catch (err) {
@@ -129,8 +132,40 @@ const CartReview = () => {
         <Link to="/catalog" className="p-2 text-gray-600 hover:bg-gray-100 rounded-xl">
           <FiArrowRight />
         </Link>
-        <h1 className="text-xl font-bold text-gray-800">סיכום הצעת מחיר</h1>
+        <h1 className="text-xl font-bold text-gray-800">
+          {editingOrderId ? `עריכת הצעת מחיר #${cart.editingQuoteNumber || ""}` : "סיכום הצעת מחיר"}
+        </h1>
       </div>
+
+      {editingOrderId && (
+        <div className="card p-3 mb-3 border-brand/30 bg-brand-superLight">
+          <p className="flex items-start gap-2 text-sm font-semibold text-gray-800">
+            <FiEdit2 className="mt-0.5 shrink-0" />
+            <span>
+              ההצעה לא אושרה במשרד. תקן את המחירים או המוצרים ושמור — היא תעודכן באותו מספר
+              ותישלח שוב לאישור.
+            </span>
+          </p>
+          {cart.editSkipped > 0 && (
+            <p className="mt-2 text-sm text-amber-800">
+              {cart.editSkipped === 1
+                ? "מוצר אחד מההצעה כבר לא זמין בקטלוג והוסר."
+                : `${cart.editSkipped} מוצרים מההצעה כבר לא זמינים בקטלוג והוסרו.`}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              clear();
+              navigate(`/orders/${editingOrderId}`);
+            }}
+            disabled={submitting}
+            className="btn-secondary text-sm mt-3"
+          >
+            ביטול העריכה
+          </button>
+        </div>
+      )}
 
       {cart.items.length === 0 ? (
         <Empty title="הסל ריק" description="חזור לקטלוג כדי להוסיף מוצרים" />
@@ -332,8 +367,12 @@ const CartReview = () => {
               {submitting
                 ? "שומר..."
                 : needsApproval
-                  ? "שמור והעבר לאישור"
-                  : "שמור כהצעת מחיר"}
+                  ? editingOrderId
+                    ? "שמור ושלח שוב לאישור"
+                    : "שמור והעבר לאישור"
+                  : editingOrderId
+                    ? "שמור את ההצעה המתוקנת"
+                    : "שמור כהצעת מחיר"}
             </button>
           </div>
         </div>
